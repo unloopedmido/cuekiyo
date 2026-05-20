@@ -1,0 +1,15 @@
+{
+  "name": "video-pipeline",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Local anime MV pipeline — see README.md",
+  "engines": {
+    "node": ">=20.18.0 <23"
+  },
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "test": "npm run test:backend && npm run test:frontend",
+    "test:backend": "cd backend && python -m pytest -q",
+    "test:frontend": "cd frontend && npm run build"
+  }
+}
