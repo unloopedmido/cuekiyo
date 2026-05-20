@@ -46,3 +46,44 @@ def test_yt_dlp_download_success_with_output(tmp_path):
         youtube_sourcer.yt_dlp_download("https://example.com", str(output))
 
     assert output.exists()
+
+
+def test_source_candidates_deduplicates_search_queries(monkeypatch):
+    from app.services import youtube_sourcer
+
+    calls = []
+
+    def fake_build_queries(anime_name, song_title, song_type, song_number, artist):
+        return [
+            "Anime Song opening",
+            "Anime Song opening",
+            " Anime   Song   opening ",
+        ]
+
+    def fake_search(query, max_results=10):
+        calls.append(query)
+        return [
+            {
+                "id": f"id-{len(calls)}",
+                "webpage_url": f"https://youtu.be/id-{len(calls)}",
+                "title": "Anime Song Opening",
+                "duration": 89,
+                "view_count": 1000,
+            }
+        ]
+
+    monkeypatch.setattr(youtube_sourcer, "build_search_queries", fake_build_queries)
+    monkeypatch.setattr(youtube_sourcer, "yt_dlp_search", fake_search)
+
+    results = youtube_sourcer.source_candidates_for_song(
+        "Anime",
+        "Song",
+        "opening",
+        1,
+        None,
+        top_n=3,
+    )
+
+    assert len(calls) == 1
+    assert calls == ["Anime Song opening"]
+    assert len(results) == 1

@@ -80,6 +80,19 @@ def build_search_queries(
     return base
 
 
+def _dedupe_queries(queries: list[str]) -> list[str]:
+    seen: set[str] = set()
+    deduped: list[str] = []
+    for query in queries:
+        display = " ".join(query.split())
+        key = display.casefold()
+        if not display or key in seen:
+            continue
+        seen.add(key)
+        deduped.append(display)
+    return deduped
+
+
 def score_candidate(
     entry: dict,
     anime_name: str,
@@ -183,7 +196,7 @@ def source_candidates_for_song(
     seen_ids: set[str] = set()
     scored: list[CandidateResult] = []
 
-    for query in build_search_queries(anime_name, song_title, song_type, song_number, artist):
+    for query in _dedupe_queries(build_search_queries(anime_name, song_title, song_type, song_number, artist)):
         for entry in yt_dlp_search(query, max_results=10):
             vid = entry.get("id")
             if not vid or vid in seen_ids:
