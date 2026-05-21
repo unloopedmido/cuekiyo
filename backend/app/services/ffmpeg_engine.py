@@ -217,6 +217,8 @@ def ensure_audio_clip(clip_path: Path, work_dir: Path) -> Path:
         return clip_path
     work_dir.mkdir(parents=True, exist_ok=True)
     out = work_dir / f"{clip_path.stem}_with_audio.mp4"
+    if out.exists() and is_valid_media(out) and has_audio_stream(out):
+        return out
     run_ffmpeg(build_silent_audio_cmd(clip_path, out))
     return out
 
