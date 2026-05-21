@@ -38,7 +38,7 @@ export default function PipelineTimeline({ status }: { status: ProjectStatus }) 
       </div>
 
       {/* Full timeline */}
-      <div className="hidden md:block overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+      <div className="hidden md:flex overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
         <ol
           className="flex items-center"
           aria-label="Project pipeline"
@@ -98,7 +98,7 @@ export default function PipelineTimeline({ status }: { status: ProjectStatus }) 
                         ? "text-muted"
                         : isActive
                           ? "font-medium text-soft"
-                          : "text-muted opacity-50",
+                          : "text-quiet",
                     ].join(" ")}
                   >
                     <span className="sr-only">{stateLabel}: </span>
