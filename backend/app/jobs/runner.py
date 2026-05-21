@@ -70,9 +70,28 @@ def _overall_progress(status: ProjectStatus, stage_pct: float) -> float:
     return min(99.0, idx * span + (stage_pct / 100.0) * span)
 
 
+def _rollback(db: Session) -> None:
+    try:
+        db.rollback()
+    except Exception:
+        pass
+
+
 def _log(db: Session, job: Job, message: str, level: LogLevel = LogLevel.INFO) -> None:
     db.add(JobLog(job_id=job.id, level=level.value, message=message))
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        _rollback(db)
+        raise
+
+
+def _release_lock_safe() -> None:
+    db = SessionLocal()
+    try:
+        _release_lock(db)
+    finally:
+        db.close()
 
 
 async def _emit(job: Job, project: Project, progress: float, message: str) -> None:
@@ -131,7 +150,11 @@ def _heartbeat_while_running(db: Session, interval: float | None = None):
 
     def tick() -> None:
         while not stop.wait(tick_seconds):
-            _heartbeat(db)
+            hb_db = SessionLocal()
+            try:
+                _heartbeat(hb_db)
+            finally:
+                hb_db.close()
 
     thread = threading.Thread(target=tick, daemon=True)
     _heartbeat(db)
@@ -155,6 +178,12 @@ def _require_all_candidates_selected(db: Session, project: Project) -> list[Song
         if not cand or cand.song_id != song.id:
             raise PrerequisiteError(f"Invalid candidate for {song.song_title}")
     return songs
+
+
+def _valid_existing_media(path: str | Path | None) -> bool:
+    if not path:
+        return False
+    return ffmpeg_engine.is_valid_media(Path(path))
 
 
 class JobRunner:
@@ -265,45 +294,63 @@ class JobRunner:
                 job.finished_at = _utcnow()
                 db.commit()
             except CancelledJob:
-                project.status = ProjectStatus.CANCELLED.value
-                job.status = JobStatus.CANCELLED.value
-                job.finished_at = _utcnow()
-                _log(db, job, "Job cancelled", LogLevel.WARNING)
-                db.commit()
+                _rollback(db)
+                job = db.get(Job, job_id)
+                project = db.get(Project, job.project_id) if job else None
+                if job and project:
+                    project.status = ProjectStatus.CANCELLED.value
+                    job.status = JobStatus.CANCELLED.value
+                    job.finished_at = _utcnow()
+                    _log(db, job, "Job cancelled", LogLevel.WARNING)
             except PrerequisiteError as e:
-                project.status = ProjectStatus.FAILED.value
-                project.error_message = str(e)
-                job.status = JobStatus.FAILED.value
-                job.error_message = str(e)
-                job.finished_at = _utcnow()
-                _log(db, job, str(e), LogLevel.ERROR)
-                db.commit()
+                _rollback(db)
+                job = db.get(Job, job_id)
+                project = db.get(Project, job.project_id) if job else None
+                if job and project:
+                    project.status = ProjectStatus.FAILED.value
+                    project.error_message = str(e)
+                    job.status = JobStatus.FAILED.value
+                    job.error_message = str(e)
+                    job.finished_at = _utcnow()
+                    _log(db, job, str(e), LogLevel.ERROR)
             except Exception as e:
-                project.status = ProjectStatus.FAILED.value
-                project.error_message = str(e)
-                job.status = JobStatus.FAILED.value
-                job.error_message = str(e)
-                job.finished_at = _utcnow()
-                _log(db, job, str(e), LogLevel.ERROR)
-                db.commit()
+                _rollback(db)
+                job = db.get(Job, job_id)
+                project = db.get(Project, job.project_id) if job else None
+                if job and project:
+                    project.status = ProjectStatus.FAILED.value
+                    project.error_message = str(e)
+                    job.status = JobStatus.FAILED.value
+                    job.error_message = str(e)
+                    job.finished_at = _utcnow()
+                    _log(db, job, str(e), LogLevel.ERROR)
             finally:
-                _release_lock(db)
-                self._cancel_flags.pop(job.id, None)
-                if self._loop:
+                _release_lock_safe()
+                self._cancel_flags.pop(job_id, None)
+                job = db.get(Job, job_id)
+                project = db.get(Project, job.project_id) if job else None
+                if self._loop and job and project:
                     import asyncio
 
                     asyncio.run_coroutine_threadsafe(
                         _emit(job, project, job.progress, job.current_step or ""),
                         self._loop,
                     )
-                db.refresh(project)
-                if job.status == JobStatus.COMPLETED.value and ProjectStatus(project.status) not in (
+                if project:
+                    db.refresh(project)
+                terminal = {
                     ProjectStatus.SONG_SELECTION,
                     ProjectStatus.AWAITING_CANDIDATES,
                     ProjectStatus.AWAITING_RENDER_ORDER,
                     ProjectStatus.COMPLETED,
                     ProjectStatus.FAILED,
                     ProjectStatus.CANCELLED,
+                }
+                if (
+                    job
+                    and project
+                    and job.status == JobStatus.COMPLETED.value
+                    and ProjectStatus(project.status) not in terminal
                 ):
                     self._auto_continue(project.id)
         finally:
@@ -440,6 +487,13 @@ class JobRunner:
                 raise PrerequisiteError(f"Missing candidate for {song.song_title}")
             out = song_download_path(project.id, song.id)
             out.parent.mkdir(parents=True, exist_ok=True)
+            if song.download_path and ffmpeg_engine.is_valid_media(Path(song.download_path)):
+                step = f"Skipping already downloaded {song.song_title}"
+                self._log_step(db, job, step)
+                self._report_progress(
+                    db, job, project, item_index=i, item_total=total, message=step, item_complete=True
+                )
+                continue
             song.status = SongStatus.DOWNLOADING.value
             step = f"Downloading {song.song_title}"
             self._log_step(db, job, f"{step} ({cand.url})")
@@ -485,6 +539,15 @@ class JobRunner:
                 raise RuntimeError(f"Invalid media: {song.download_path}")
             out = song_normalized_path(project.id, song.id)
             out.parent.mkdir(parents=True, exist_ok=True)
+            if _valid_existing_media(out):
+                step = f"Skipping existing normalized clip for {song.song_title}"
+                song.status = SongStatus.NORMALIZING.value
+                self._log_step(db, job, step)
+                self._report_progress(
+                    db, job, project, item_index=i, item_total=total, message=step, item_complete=True
+                )
+                db.commit()
+                continue
             song.status = SongStatus.NORMALIZING.value
             step = f"Normalizing {song.song_title}"
             self._log_step(db, job, step)
@@ -526,6 +589,7 @@ class JobRunner:
         log_fn = self._ffmpeg_log(db, job)
         songs = list(project.songs)
         total = len(songs)
+        probe_cache: dict[Path, dict] = {}
         for i, song in enumerate(songs):
             self._check_cancelled(job.id)
             inp = self._normalized_input(project.id, song)
@@ -533,7 +597,31 @@ class JobRunner:
             step = f"Cutting {song.song_title}"
             self._log_step(db, job, step)
             self._report_progress(db, job, project, item_index=i, item_total=total, message=step)
-            meta = ffmpeg_engine.ffprobe_json(inp)
+            out = song_clean_clip_path(project.id, song.id)
+            out.parent.mkdir(parents=True, exist_ok=True)
+            if (
+                song.cut_start_time is not None
+                and song.cut_end_time is not None
+                and _valid_existing_media(out)
+            ):
+                skip_step = f"Skipping existing clean clip for {song.song_title}"
+                song.clean_clip_path = str(out)
+                self._log_step(db, job, skip_step)
+                self._report_progress(
+                    db,
+                    job,
+                    project,
+                    item_index=i,
+                    item_total=total,
+                    message=skip_step,
+                    item_complete=True,
+                )
+                db.commit()
+                continue
+            meta = probe_cache.get(inp)
+            if meta is None:
+                meta = ffmpeg_engine.ffprobe_json(inp)
+                probe_cache[inp] = meta
             duration = float(meta.get("format", {}).get("duration", 90))
             clip = min(project.clip_time, duration)
             cand = db.get(SongCandidate, song.selected_candidate_id) if song.selected_candidate_id else None
@@ -542,8 +630,6 @@ class JobRunner:
             start, end = heatmap.highest_average_window(heat or [], clip, duration)
             if end - start < clip:
                 end = min(duration, start + clip)
-            out = song_clean_clip_path(project.id, song.id)
-            out.parent.mkdir(parents=True, exist_ok=True)
             cmd = ffmpeg_engine.build_cut_cmd(inp, out, start, end - start, project.audio_normalize, enc)
             with _heartbeat_while_running(db):
                 ffmpeg_engine.run_ffmpeg(
@@ -595,6 +681,16 @@ class JobRunner:
             inp = Path(song.clean_clip_path)
             out = song_overlayed_path(project.id, song.id)
             out.parent.mkdir(parents=True, exist_ok=True)
+            if _valid_existing_media(out):
+                step = f"Skipping existing overlay for {song.song_title}"
+                song.overlayed_clip_path = str(out)
+                song.status = SongStatus.READY.value
+                self._log_step(db, job, step)
+                self._report_progress(
+                    db, job, project, item_index=i, item_total=total, message=step, item_complete=True
+                )
+                db.commit()
+                continue
             cmd = ffmpeg_engine.build_overlay_cmd(inp, out, enc, video_filter)
             with _heartbeat_while_running(db):
                 ffmpeg_engine.run_ffmpeg(
@@ -660,6 +756,48 @@ class JobRunner:
         project.output_path = str(out)
         project.status = ProjectStatus.COMPLETED.value
         db.commit()
+
+
+def recover_stale_pipeline_jobs() -> int:
+    """Mark running jobs as failed when the global lock heartbeat is stale."""
+    db = SessionLocal()
+    recovered = 0
+    try:
+        lock = _get_lock(db)
+        if not lock.running_job_id or not lock.last_heartbeat_at:
+            return 0
+        age = (_utcnow() - _as_utc(lock.last_heartbeat_at)).total_seconds()
+        if age < settings.stale_lock_seconds:
+            return 0
+        job = db.get(Job, lock.running_job_id)
+        if not job or job.status != JobStatus.RUNNING.value:
+            lock.running_job_id = None
+            lock.running_project_id = None
+            db.commit()
+            return 0
+        project = db.get(Project, job.project_id)
+        now = _utcnow()
+        job.status = JobStatus.FAILED.value
+        job.error_message = "Job interrupted (pipeline lock expired)"
+        job.finished_at = now
+        if project:
+            project.status = ProjectStatus.FAILED.value
+            project.error_message = job.error_message
+        lock.running_job_id = None
+        lock.running_project_id = None
+        lock.last_heartbeat_at = now
+        db.add(
+            JobLog(
+                job_id=job.id,
+                level=LogLevel.ERROR.value,
+                message=job.error_message,
+            )
+        )
+        db.commit()
+        recovered = 1
+    finally:
+        db.close()
+    return recovered
 
 
 job_runner = JobRunner()

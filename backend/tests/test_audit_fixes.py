@@ -214,6 +214,39 @@ def test_recover_stale_pipeline_jobs(db_session):
     assert lock.running_job_id is None
 
 
+def test_failed_job_releases_pipeline_lock(db_session):
+    from unittest.mock import patch
+
+    from app.jobs.runner import JobRunner
+    from app.models import AppLock, Job, Project
+
+    project = Project(title="Fail", status=ProjectStatus.DOWNLOADING.value, song_types='["opening"]')
+    db_session.add(project)
+    db_session.flush()
+    job = Job(project_id=project.id, type="download", status="queued")
+    db_session.add(job)
+    db_session.commit()
+
+    runner = JobRunner()
+    job_id = job.id
+    project_id = project.id
+
+    with patch("app.jobs.runner.SessionLocal", side_effect=lambda: db_session):
+        with patch.object(runner, "_run_download", side_effect=RuntimeError("boom")):
+            runner._run_job_thread(job_id)
+
+    db_session.expire_all()
+    lock = db_session.get(AppLock, "global_pipeline")
+    job = db_session.get(Job, job_id)
+    project = db_session.get(Project, project_id)
+
+    assert lock.running_job_id is None
+    assert lock.running_project_id is None
+    assert job.status == "failed"
+    assert project.status == ProjectStatus.FAILED.value
+    assert "boom" in job.error_message
+
+
 def test_stale_lock_not_stolen_while_heartbeating(db_session):
     from datetime import datetime, timedelta, timezone
 

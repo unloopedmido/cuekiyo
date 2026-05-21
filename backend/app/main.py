@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import router
 from app.database import init_db
-from app.jobs.runner import job_runner
+from app.jobs.runner import job_runner, recover_stale_pipeline_jobs
 
 app = FastAPI(title="Anime MV Pipeline", version="1.0.0")
 
@@ -23,6 +23,7 @@ app.include_router(router, prefix="/api")
 @app.on_event("startup")
 def on_startup() -> None:
     init_db()
+    recover_stale_pipeline_jobs()
     loop = asyncio.get_event_loop()
     job_runner.set_event_loop(loop)
 
