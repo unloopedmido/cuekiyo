@@ -2,11 +2,14 @@ import json
 import math
 import re
 import subprocess
+import threading
 import time
 from collections.abc import Callable
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from app.config import settings
 from app.exceptions import CancelledJob
 
 REJECT_KEYWORDS = [
@@ -33,6 +36,28 @@ REJECT_KEYWORDS = [
 SHORTS_MAX_DURATION = 60.0
 IDEAL_MIN_DURATION = 60.0
 IDEAL_MAX_DURATION = 120.0
+
+_youtube_semaphore: threading.Semaphore | None = None
+_youtube_semaphore_lock = threading.Lock()
+
+
+def _get_youtube_semaphore() -> threading.Semaphore:
+    global _youtube_semaphore
+    with _youtube_semaphore_lock:
+        if _youtube_semaphore is None:
+            workers = max(1, settings.youtube_workers)
+            _youtube_semaphore = threading.Semaphore(workers)
+        return _youtube_semaphore
+
+
+@contextmanager
+def youtube_slot():
+    sem = _get_youtube_semaphore()
+    sem.acquire()
+    try:
+        yield
+    finally:
+        sem.release()
 
 
 @dataclass
@@ -175,7 +200,8 @@ def yt_dlp_search(query: str, max_results: int = 10) -> list[dict]:
         "--no-warnings",
         "--skip-download",
     ]
-    proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    with youtube_slot():
+        proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
     if proc.returncode != 0:
         return []
     try:
@@ -243,7 +269,8 @@ def yt_dlp_download(
         "--no-playlist",
         "--no-warnings",
     ]
-    proc = _run_subprocess(cmd, cancel_check=cancel_check)
+    with youtube_slot():
+        proc = _run_subprocess(cmd, cancel_check=cancel_check)
     if proc.returncode != 0:
         cleanup_download_artifacts(out)
         raise RuntimeError(proc.stderr or proc.stdout or "yt-dlp download failed")
@@ -255,7 +282,8 @@ def yt_dlp_download(
 def fetch_heatmap(url: str) -> list[tuple[float, float]] | None:
     """Return list of (timestamp, value) from yt-dlp heatmap if available."""
     cmd = ["yt-dlp", "--dump-json", "--skip-download", url]
-    proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    with youtube_slot():
+        proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
     if proc.returncode != 0:
         return None
     try:
