@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Check, Loader2 } from "lucide-react";
+import { Check, Loader2, Minus, XCircle } from "lucide-react";
 import { PIPELINE_STAGES, RUNNING_STATUSES, getStageIndex } from "../pipeline";
 import type { ProjectStatus } from "../types";
 
@@ -16,7 +16,7 @@ export default function PipelineTimeline({ status }: { status: ProjectStatus }) 
   return (
     <>
       {/* Compact mobile view */}
-      <div className="flex md:hidden items-center gap-3 px-1 py-2">
+      <div role="status" aria-label="Pipeline progress" className="flex md:hidden items-center gap-3 px-1 py-2">
         <div
           className="flex items-center justify-center w-7 h-7 rounded-full border border-lime/60 bg-lime/10 flex-shrink-0"
           aria-hidden="true"
@@ -29,7 +29,7 @@ export default function PipelineTimeline({ status }: { status: ProjectStatus }) 
         </div>
         <div className="flex flex-col gap-0.5 min-w-0">
           <span className="text-xs font-medium text-soft truncate">
-            {PIPELINE_STAGES[activeIndex]?.label}
+            {PIPELINE_STAGES[activeIndex].label}
           </span>
           <span className="text-xs text-quiet">
             Step {activeIndex + 1} of {PIPELINE_STAGES.length}
@@ -64,7 +64,14 @@ export default function PipelineTimeline({ status }: { status: ProjectStatus }) 
                     className={[
                       "flex items-center justify-center transition-all duration-300",
                       isActive
-                        ? "w-8 h-8 rounded-lg border border-lime/60 bg-lime/[0.08]"
+                        ? [
+                            "w-8 h-8 rounded-lg border",
+                            status === "FAILED"
+                              ? "border-red-300/40 bg-red-300/5"
+                              : status === "CANCELLED"
+                                ? "border-white/20 bg-panel/50"
+                                : "border-lime/60 bg-lime/[0.08]",
+                          ].join(" ")
                         : "w-6 h-6 rounded-full border",
                       isComplete
                         ? "border-white/20 bg-white/[0.06]"
@@ -88,6 +95,18 @@ export default function PipelineTimeline({ status }: { status: ProjectStatus }) 
                     {isActive && running && (
                       <Loader2 size={13} className="animate-spin text-lime" />
                     )}
+                    {isActive && !running && status === "COMPLETED" && (
+                      <Check size={12} className="text-lime" strokeWidth={2.5} />
+                    )}
+                    {isActive && !running && status === "FAILED" && (
+                      <XCircle size={13} className="text-red-300" />
+                    )}
+                    {isActive && !running && status === "CANCELLED" && (
+                      <Minus size={13} className="text-muted" />
+                    )}
+                    {isActive && !running && status !== "COMPLETED" && status !== "FAILED" && status !== "CANCELLED" && (
+                      <span className="size-1.5 rounded-full bg-lime animate-pulse" />
+                    )}
                   </div>
 
                   {/* Label */}
@@ -108,6 +127,7 @@ export default function PipelineTimeline({ status }: { status: ProjectStatus }) 
                           key={stage.id}
                           initial={{ opacity: 0, y: 4 }}
                           animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -4 }}
                           transition={transition(0.2)}
                           style={{ display: "inline-block" }}
                         >
@@ -127,7 +147,7 @@ export default function PipelineTimeline({ status }: { status: ProjectStatus }) 
                     <div className="absolute inset-0 bg-white/10" />
                     {/* Lime fill */}
                     <motion.div
-                      className="absolute inset-0 bg-lime origin-left"
+                      className="absolute inset-0 bg-lime"
                       initial={{ scaleX: connectorFilled ? 1 : 0 }}
                       animate={{ scaleX: connectorFilled ? 1 : 0 }}
                       transition={transition(0.5)}
