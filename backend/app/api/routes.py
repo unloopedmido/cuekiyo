@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.enums import JobType, ProjectStatus, SongStatus
-from app.jobs.runner import job_runner
+from app.jobs.runner import job_runner, release_lock_for_project
 from app.jobs.websocket_manager import ws_manager
 from app.models import Job, JobLog, Project, ProjectAnime, Song, SongCandidate, ThemeSong
 from app.schemas.anime import AnimeSearchResult, ThemeSongOut
@@ -122,6 +122,7 @@ def delete_project(project_id: str, db: Session = Depends(get_db)):
         raise HTTPException(404, "Project not found")
     if not is_deletable(ProjectStatus(project.status)):
         raise HTTPException(400, "Cannot delete project in current status")
+    release_lock_for_project(db, project_id)
     db.delete(project)
     db.commit()
     pdir = project_dir(project_id)

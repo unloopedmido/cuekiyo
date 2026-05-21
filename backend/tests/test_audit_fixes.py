@@ -29,7 +29,7 @@ def test_awaiting_render_order_requires_unique_order():
 
 def test_stage_start_blocks_incomplete_candidates(db_session):
     from app.api.routes import start_next_stage
-    from app.models import Project, ProjectAnime, Song
+    from app.models import Project, ProjectAnime, Song, SongCandidate
 
     project = Project(
         title="Test",
@@ -40,19 +40,17 @@ def test_stage_start_blocks_incomplete_candidates(db_session):
     db_session.add(project)
     db_session.flush()
     db_session.add(ProjectAnime(project_id=project.id, anime_mal_id=1, anime_name="Anime A", display_order=0))
-    db_session.add(
-        Song(
-            project_id=project.id,
-            anime_mal_id=1,
-            anime_name="Anime A",
-            song_type="opening",
-            song_number=1,
-            song_title="Song A",
-            raw_theme_text="OP1",
-            render_order=0,
-            selected_candidate_id="cand-1",
-        )
+    song_a = Song(
+        project_id=project.id,
+        anime_mal_id=1,
+        anime_name="Anime A",
+        song_type="opening",
+        song_number=1,
+        song_title="Song A",
+        raw_theme_text="OP1",
+        render_order=0,
     )
+    db_session.add(song_a)
     db_session.add(
         Song(
             project_id=project.id,
@@ -65,6 +63,18 @@ def test_stage_start_blocks_incomplete_candidates(db_session):
             render_order=1,
         )
     )
+    db_session.flush()
+    candidate = SongCandidate(
+        song_id=song_a.id,
+        youtube_id="abc123",
+        url="https://youtube.com/watch?v=abc123",
+        title="Song A full",
+        rank=1,
+        is_selected=True,
+    )
+    db_session.add(candidate)
+    db_session.flush()
+    song_a.selected_candidate_id = candidate.id
     db_session.commit()
 
     with patch("app.api.routes.job_runner.start_job") as start_job:
@@ -78,7 +88,7 @@ def test_stage_start_blocks_incomplete_candidates(db_session):
 
 def test_stage_start_blocks_invalid_render_order_without_starting_job(db_session):
     from app.api.routes import start_next_stage
-    from app.models import Project, Song
+    from app.models import Project, Song, SongCandidate
 
     project = Project(
         title="Render Gate",
@@ -99,10 +109,22 @@ def test_stage_start_blocks_invalid_render_order_without_starting_job(db_session
             song_title=title,
             raw_theme_text="OP1",
             render_order=i,
-            selected_candidate_id="candidate-id",
         )
         db_session.add(song)
         songs.append(song)
+    db_session.flush()
+    for song in songs:
+        candidate = SongCandidate(
+            song_id=song.id,
+            youtube_id=f"vid{song.render_order}",
+            url=f"https://youtube.com/watch?v=vid{song.render_order}",
+            title=f"{song.song_title} full",
+            rank=1,
+            is_selected=True,
+        )
+        db_session.add(candidate)
+        db_session.flush()
+        song.selected_candidate_id = candidate.id
     db_session.commit()
     for song in songs:
         song.render_order = 0
@@ -271,6 +293,79 @@ def test_stale_lock_not_stolen_while_heartbeating(db_session):
     db_session.commit()
     _release_lock(db_session)
     assert _acquire_lock(db_session, project_b.id, job_b.id) is True
+
+
+def test_orphaned_lock_allows_new_job(db_session):
+    from datetime import datetime, timezone
+
+    from app.jobs.runner import _acquire_lock
+    from app.models import AppLock, Job, Project
+
+    project = Project(title="New", status=ProjectStatus.LOADING_THEMES.value)
+    db_session.add(project)
+    db_session.flush()
+    job = Job(project_id=project.id, type="load_themes", status="queued")
+    db_session.add(job)
+    db_session.commit()
+
+    lock = db_session.get(AppLock, "global_pipeline")
+    lock.running_project_id = "deleted-project"
+    lock.running_job_id = "deleted-job"
+    lock.last_heartbeat_at = datetime.now(timezone.utc)
+    db_session.commit()
+
+    assert _acquire_lock(db_session, project.id, job.id) is True
+
+
+def test_lock_failure_marks_project_failed(db_session):
+    from unittest.mock import patch
+
+    from app.jobs.runner import JobRunner, _acquire_lock
+    from app.models import Job, Project
+
+    holder = Project(title="Holder", status=ProjectStatus.DOWNLOADING.value)
+    blocked = Project(title="Blocked", status=ProjectStatus.LOADING_THEMES.value)
+    db_session.add_all([holder, blocked])
+    db_session.flush()
+    running_job = Job(project_id=holder.id, type="download", status="running")
+    blocked_job = Job(project_id=blocked.id, type="load_themes", status="queued")
+    db_session.add_all([running_job, blocked_job])
+    db_session.commit()
+
+    assert _acquire_lock(db_session, holder.id, running_job.id) is True
+
+    runner = JobRunner()
+    blocked_job_id = blocked_job.id
+    blocked_project_id = blocked.id
+    with patch("app.jobs.runner.SessionLocal", side_effect=lambda: db_session):
+        runner._run_job_thread(blocked_job_id)
+
+    db_session.expire_all()
+    blocked = db_session.get(Project, blocked_project_id)
+    blocked_job = db_session.get(Job, blocked_job_id)
+    assert blocked_job.status == "failed"
+    assert blocked.status == ProjectStatus.FAILED.value
+    assert "Another job is running" in blocked.error_message
+
+
+def test_delete_project_releases_pipeline_lock(db_session):
+    from app.api.routes import delete_project
+    from app.jobs.runner import _acquire_lock
+    from app.models import AppLock, Job, Project
+
+    project = Project(title="Delete me", status=ProjectStatus.COMPLETED.value)
+    db_session.add(project)
+    db_session.flush()
+    job = Job(project_id=project.id, type="render", status="running")
+    db_session.add(job)
+    db_session.commit()
+    assert _acquire_lock(db_session, project.id, job.id) is True
+
+    delete_project(project.id, db_session)
+
+    lock = db_session.get(AppLock, "global_pipeline")
+    assert lock.running_project_id is None
+    assert lock.running_job_id is None
 
 
 def test_render_fails_on_missing_overlay(db_session):
