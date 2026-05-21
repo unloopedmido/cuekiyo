@@ -118,6 +118,31 @@ def _dedupe_queries(queries: list[str]) -> list[str]:
     return deduped
 
 
+def _extract_thumbnail(entry: dict) -> str | None:
+    thumb = entry.get("thumbnail")
+    if thumb:
+        return str(thumb)
+
+    thumbnails = entry.get("thumbnails")
+    if isinstance(thumbnails, list) and thumbnails:
+        best: dict | None = None
+        best_width = -1
+        for item in thumbnails:
+            if not isinstance(item, dict):
+                continue
+            width = item.get("width") or 0
+            if width >= best_width and item.get("url"):
+                best = item
+                best_width = width
+        if best and best.get("url"):
+            return str(best["url"])
+
+    youtube_id = entry.get("id")
+    if youtube_id:
+        return f"https://i.ytimg.com/vi/{youtube_id}/hqdefault.jpg"
+    return None
+
+
 def score_candidate(
     entry: dict,
     anime_name: str,
@@ -164,7 +189,7 @@ def score_candidate(
         uploader_name=entry.get("uploader") or entry.get("channel"),
         view_count=views if views else None,
         duration=float(duration) if duration is not None else None,
-        thumbnail_url=entry.get("thumbnail"),
+        thumbnail_url=_extract_thumbnail(entry),
         score=score,
         rejection_flags=flags,
         raw_metadata=entry,

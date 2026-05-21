@@ -56,9 +56,9 @@ export const api = {
       `/jobs/${jobId}/logs`,
     ),
   searchAnime: (q: string) =>
-    request<{ mal_id: number; title: string; title_english?: string }[]>(
-      `/anime/search?q=${encodeURIComponent(q)}`,
-    ),
+    request<
+      { mal_id: number; title: string; title_english?: string | null; image_url?: string | null }[]
+    >(`/anime/search?q=${encodeURIComponent(q)}`),
   binaries: () => request<Record<string, { available: boolean; detail: string }>>("/system/binaries"),
   getOutput: (id: string) =>
     request<{ output_path: string | null; output_filename: string | null; exists: boolean; status: string }>(

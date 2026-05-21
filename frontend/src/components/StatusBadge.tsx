@@ -1,26 +1,115 @@
 import type { ProjectStatus } from "../types";
 
-const COLORS: Record<string, string> = {
-  DRAFT: "bg-zinc-700",
-  LOADING_THEMES: "bg-blue-700",
-  SONG_SELECTION: "bg-indigo-700",
-  SOURCING: "bg-purple-700",
-  AWAITING_CANDIDATES: "bg-amber-700",
-  DOWNLOADING: "bg-cyan-700",
-  PROBING_NORMALIZING: "bg-teal-700",
-  CUTTING: "bg-teal-800",
-  OVERLAYING: "bg-emerald-700",
-  AWAITING_RENDER_ORDER: "bg-orange-700",
-  RENDERING: "bg-rose-700",
-  COMPLETED: "bg-green-700",
-  FAILED: "bg-red-700",
-  CANCELLED: "bg-zinc-600",
+const STYLES: Record<ProjectStatus, { border: string; bg: string; text: string; label: string; pulse?: boolean }> = {
+  DRAFT: {
+    border: "border-brand-border",
+    bg: "bg-brand-raised/50",
+    text: "text-zinc-400",
+    label: "Draft",
+  },
+  LOADING_THEMES: {
+    border: "border-brand-amber/30",
+    bg: "bg-brand-amber/5",
+    text: "text-brand-amber",
+    label: "Loading themes",
+    pulse: true,
+  },
+  SONG_SELECTION: {
+    border: "border-brand-amber",
+    bg: "bg-brand-amber-dim",
+    text: "text-brand-amber font-medium",
+    label: "Pick songs",
+  },
+  SOURCING: {
+    border: "border-brand-amber/30",
+    bg: "bg-brand-amber/5",
+    text: "text-brand-amber",
+    label: "Sourcing",
+    pulse: true,
+  },
+  AWAITING_CANDIDATES: {
+    border: "border-brand-amber",
+    bg: "bg-brand-amber-dim",
+    text: "text-brand-amber font-medium",
+    label: "Pick clips",
+  },
+  DOWNLOADING: {
+    border: "border-brand-amber/30",
+    bg: "bg-brand-amber/5",
+    text: "text-brand-amber",
+    label: "Downloading",
+    pulse: true,
+  },
+  PROBING_NORMALIZING: {
+    border: "border-brand-amber/30",
+    bg: "bg-brand-amber/5",
+    text: "text-brand-amber",
+    label: "Normalizing",
+    pulse: true,
+  },
+  CUTTING: {
+    border: "border-brand-amber/30",
+    bg: "bg-brand-amber/5",
+    text: "text-brand-amber",
+    label: "Cutting",
+    pulse: true,
+  },
+  OVERLAYING: {
+    border: "border-brand-amber/30",
+    bg: "bg-brand-amber/5",
+    text: "text-brand-amber",
+    label: "Overlaying",
+    pulse: true,
+  },
+  AWAITING_RENDER_ORDER: {
+    border: "border-brand-amber",
+    bg: "bg-brand-amber-dim",
+    text: "text-brand-amber font-medium",
+    label: "Set order",
+  },
+  RENDERING: {
+    border: "border-brand-amber/30",
+    bg: "bg-brand-amber/5",
+    text: "text-brand-amber",
+    label: "Rendering",
+    pulse: true,
+  },
+  COMPLETED: {
+    border: "border-brand-success/30",
+    bg: "bg-brand-success/5",
+    text: "text-brand-success",
+    label: "Complete",
+  },
+  FAILED: {
+    border: "border-brand-error/30",
+    bg: "bg-brand-error/5",
+    text: "text-brand-error font-medium",
+    label: "Failed",
+  },
+  CANCELLED: {
+    border: "border-brand-border",
+    bg: "bg-brand-raised/20",
+    text: "text-zinc-500",
+    label: "Cancelled",
+  },
 };
 
 export default function StatusBadge({ status }: { status: ProjectStatus }) {
+  const cfg = STYLES[status] || {
+    border: "border-brand-border",
+    bg: "bg-brand-raised/50",
+    text: "text-zinc-400",
+    label: status.replace(/_/g, " ").toLowerCase(),
+  };
+
   return (
-    <span className={`rounded px-2 py-0.5 text-xs font-medium ${COLORS[status] ?? "bg-zinc-700"}`}>
-      {status.replace(/_/g, " ")}
+    <span
+      className={`inline-flex items-center gap-1.5 rounded border px-2.5 py-0.5 text-[11px] transition-colors ${cfg.border} ${cfg.bg} ${cfg.text}`}
+    >
+      {cfg.pulse && (
+        <span className="h-1.5 w-1.5 rounded-full bg-brand-amber motion-safe:animate-pulse" aria-hidden />
+      )}
+      {cfg.label}
     </span>
   );
 }
