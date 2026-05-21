@@ -66,7 +66,10 @@ export default function CompletedOutput({
           )}
         </>
       ) : (
-        <p className="mt-2 text-sm text-muted">Output file missing. Check logs and retry.</p>
+        <>
+          <p className="mt-2 text-sm text-muted">The output file could not be found on disk.</p>
+          <p className="mt-2 text-sm text-muted">Open the project logs to diagnose, then retry rendering from the project page.</p>
+        </>
       )}
     </div>
   );

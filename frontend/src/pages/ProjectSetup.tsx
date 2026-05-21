@@ -67,7 +67,7 @@ export default function ProjectSetup() {
       <section>
         <div className="mb-8">
           <p className="text-sm font-medium text-lime">Project setup</p>
-          <h1 className="mt-2 max-w-3xl text-4xl font-semibold tracking-normal text-soft">
+          <h1 className="mt-2 max-w-3xl text-4xl font-semibold tracking-tight text-soft">
             Choose the source anime and let the pipeline take the first pass.
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-muted">

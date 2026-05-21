@@ -7,6 +7,17 @@ import type { Project } from "../types";
 import { getProjectAction, getStatusCopy } from "../pipeline";
 import { errorToMessage } from "../lib/errors";
 
+function timeAgo(iso: string): string {
+  const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
 export default function Dashboard() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [binaries, setBinaries] = useState<Record<string, { available: boolean; detail: string }>>({});
@@ -27,7 +38,7 @@ export default function Dashboard() {
       <div className="mb-8 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-sm font-medium text-lime">Projects</p>
-          <h1 className="mt-2 text-4xl font-semibold tracking-normal">Your local MV studio</h1>
+          <h1 className="mt-2 text-4xl font-semibold tracking-tight">Your local MV studio</h1>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-muted">
             Start a compilation, return to checkpoints that need taste, or open finished outputs.
           </p>
@@ -64,7 +75,7 @@ export default function Dashboard() {
               <div className="min-w-0">
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   <StatusBadge status={p.status} />
-                  <span className="text-xs text-muted">Updated {new Date(p.updated_at).toLocaleString()}</span>
+                  <span className="text-xs text-muted">Updated {timeAgo(p.updated_at)}</span>
                 </div>
                 <Link to={`/projects/${p.id}`} className="text-lg font-medium hover:text-lime">
                   {p.title}
@@ -96,13 +107,17 @@ export default function Dashboard() {
                   </div>
                 ) : (
                   <>
-                    <Link
-                      to={`/projects/${p.id}`}
-                      className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-sm hover:bg-white/[0.06]"
-                    >
-                      {getProjectAction(p.status)}
-                      <ArrowRight size={15} aria-hidden="true" />
-                    </Link>
+                    {p.status === "CANCELLED" ? (
+                      <span className="text-xs text-muted">Stopped</span>
+                    ) : (
+                      <Link
+                        to={`/projects/${p.id}`}
+                        className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-sm hover:bg-white/[0.06]"
+                      >
+                        {getProjectAction(p.status)}
+                        <ArrowRight size={15} aria-hidden="true" />
+                      </Link>
+                    )}
                     <button
                       className="grid size-10 place-items-center rounded-xl border border-white/10 text-muted hover:border-red-300/40 hover:text-red-200"
                       aria-label={`Delete ${p.title}`}

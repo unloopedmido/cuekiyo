@@ -50,16 +50,13 @@ export default function ProjectPage() {
     <div className="space-y-6 animate-pulse">
       <div className="h-8 w-64 rounded bg-white/[0.07]" />
       <div className="h-4 w-96 rounded bg-white/[0.07]" />
-      <div className="grid gap-2 lg:grid-cols-8">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="h-16 rounded-xl bg-white/[0.07]" />
-        ))}
-      </div>
+      <div className="h-10 w-full rounded-xl bg-white/[0.07]" />
     </div>
   );
 
   const status = getStatusCopy(project.status);
   const running = RUNNING_STATUSES.has(project.status);
+  const isTerminal = ["COMPLETED", "FAILED", "CANCELLED"].includes(project.status);
 
   return (
     <div>
@@ -69,9 +66,6 @@ export default function ProjectPage() {
       </div>
 
       {error && <p className="mb-4 rounded-xl border border-red-300/30 bg-red-300/10 p-3 text-sm text-red-200">{error}</p>}
-      {project.error_message && (
-        <p className="mb-4 rounded-xl border border-red-300/30 bg-red-300/10 p-3 text-sm text-red-200">{project.error_message}</p>
-      )}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <section className="min-w-0">
@@ -112,6 +106,9 @@ export default function ProjectPage() {
                 Review the message and logs, then retry from the failed stage when the local issue
                 is resolved.
               </p>
+              {project.error_message && (
+                <pre className="mt-3 overflow-x-auto rounded-xl bg-studio/50 px-3 py-2 text-xs leading-5 text-red-100/70">{project.error_message}</pre>
+              )}
               <button
                 className="mt-5 inline-flex items-center gap-2 rounded-xl bg-lime px-4 py-3 text-sm font-medium text-studio"
                 onClick={() => api.retry(id).then(refresh)}
@@ -136,25 +133,27 @@ export default function ProjectPage() {
           )}
         </section>
 
-        <aside className="h-fit rounded-2xl border border-white/10 bg-panel/70 p-5">
-          <h2 className="text-sm font-semibold">Current checkpoint</h2>
-          <p className="mt-3 text-lg font-medium">{status.label}</p>
-          <p className="mt-2 text-sm leading-6 text-muted">{status.description}</p>
-          <dl className="mt-5 grid gap-3 text-sm">
-            <div>
-              <dt className="text-muted">Anime</dt>
-              <dd className="mt-1">{project.animes.map((anime) => anime.anime_name).join(", ")}</dd>
-            </div>
-            <div>
-              <dt className="text-muted">Song types</dt>
-              <dd className="mt-1 capitalize">{project.song_types.join(", ")}</dd>
-            </div>
-            <div>
-              <dt className="text-muted">Encoder</dt>
-              <dd className="mt-1">{project.encoder}</dd>
-            </div>
-          </dl>
-        </aside>
+        {!isTerminal && (
+          <aside className="h-fit rounded-2xl border border-white/10 bg-panel/70 p-5">
+            <h2 className="text-sm font-semibold">Current checkpoint</h2>
+            <p className="mt-3 text-lg font-medium">{status.label}</p>
+            <p className="mt-2 text-sm leading-6 text-muted">{status.description}</p>
+            <dl className="mt-5 grid gap-3 text-sm">
+              <div>
+                <dt className="text-muted">Anime</dt>
+                <dd className="mt-1">{project.animes.map((anime) => anime.anime_name).join(", ")}</dd>
+              </div>
+              <div>
+                <dt className="text-muted">Song types</dt>
+                <dd className="mt-1 capitalize">{project.song_types.join(", ")}</dd>
+              </div>
+              <div>
+                <dt className="text-muted">Encoder</dt>
+                <dd className="mt-1">{project.encoder}</dd>
+              </div>
+            </dl>
+          </aside>
+        )}
       </div>
     </div>
   );

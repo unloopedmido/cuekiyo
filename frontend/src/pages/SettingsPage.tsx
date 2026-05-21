@@ -20,7 +20,7 @@ export default function SettingsPage() {
     <div>
       <div className="mb-8">
         <p className="text-sm font-medium text-lime">Diagnostics</p>
-        <h1 className="mt-2 text-4xl font-semibold tracking-normal">Local readiness</h1>
+        <h1 className="mt-2 text-4xl font-semibold tracking-tight">Local readiness</h1>
         <p className="mt-4 max-w-2xl text-sm leading-6 text-muted">
           These checks explain whether the machine can source, process, overlay, and render videos.
           Project logs stay inside each project workspace.
@@ -56,9 +56,20 @@ export default function SettingsPage() {
           <h2 className="font-medium">Install hints</h2>
         </div>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">
-          The app expects yt-dlp, ffmpeg, ffprobe, and an overlay-capable font package to be
-          available to the backend process.
+          All four tools must be on the system PATH available to this app's backend process.
         </p>
+        <div className="mt-4 space-y-3">
+          {[
+            { name: "yt-dlp", cmd: "pip install yt-dlp  # or: brew install yt-dlp" },
+            { name: "ffmpeg + ffprobe", cmd: "brew install ffmpeg  # or: apt install ffmpeg" },
+            { name: "fonts (for overlays)", cmd: "apt install fonts-liberation  # or: brew install --cask font-liberation" },
+          ].map(({ name, cmd }) => (
+            <div key={name}>
+              <p className="text-xs font-medium text-soft">{name}</p>
+              <pre className="mt-1 overflow-x-auto rounded-xl border border-white/10 bg-studio/60 px-3 py-2 text-xs leading-5 text-muted">{cmd}</pre>
+            </div>
+          ))}
+        </div>
       </section>
     </div>
   );
