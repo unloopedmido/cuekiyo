@@ -45,6 +45,8 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
             className="hidden group-data-[collapsible=icon]:flex"
           />
         </div>
+        {/* Lime accent line under logo */}
+        <div className="fcr-lime-line mx-2 mt-1 opacity-60" />
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
@@ -58,7 +60,9 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                       to={to}
                       end={end}
                       className={({ isActive }) =>
-                        cn(isActive && "bg-sidebar-accent font-medium")
+                        cn(
+                          isActive && "bg-primary/10 font-medium text-primary shadow-[0_0_12px_oklch(0.768_0.233_130.85/0.15)]"
+                        )
                       }
                     >
                       <HugeiconsIcon icon={icon} strokeWidth={2} />
@@ -74,7 +78,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
       <SidebarFooter className="p-2.5">
         <Button
           variant="outline"
-          className="h-9 w-full justify-start gap-2.5 px-3 group-data-[collapsible=icon]:size-9 group-data-[collapsible=icon]:p-0"
+          className="h-9 w-full justify-start gap-2.5 px-3 group-data-[collapsible=icon]:size-9 group-data-[collapsible=icon]:p-0 hover:border-primary/30 hover:shadow-[0_0_12px_oklch(0.768_0.233_130.85/0.1)]"
           onClick={openCommandPalette}
         >
           <HugeiconsIcon

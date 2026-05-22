@@ -109,7 +109,7 @@ function AppLayoutInner() {
 			<GlobalHotkeys>
 				<AppSidebar />
 				<SidebarInset>
-					<header className="flex h-14 shrink-0 items-center gap-3 border-b border-border/60 bg-background/80 px-4 backdrop-blur-sm">
+					<header className="fcr-glass-heavy sticky top-0 z-50 flex h-14 shrink-0 items-center gap-3 border-b border-border/60 px-4">
 						<SidebarTrigger className="-ml-1" />
 						<Breadcrumbs />
 					</header>
@@ -117,7 +117,7 @@ function AppLayoutInner() {
 						id="main-content"
 						className="flex flex-1 flex-col px-4 py-6 md:px-8 md:py-8"
 					>
-						<div className="mx-auto flex w-full max-w-6xl flex-1 flex-col">
+						<div className="mx-auto flex w-full max-w-6xl flex-1 flex-col fcr-animate-up">
 							<Outlet />
 						</div>
 					</main>
