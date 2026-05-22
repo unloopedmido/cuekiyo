@@ -13,7 +13,6 @@ export interface ShortcutDef {
 	handler: ShortcutHandler;
 }
 
-/* ─── Shared module-level registry ─── */
 const globalRegistry: ShortcutDef[] = [];
 let listenerCount = 0;
 
@@ -102,7 +101,9 @@ export function useShortcutsRegistry() {
 	return { register };
 }
 
-function formatKey(def: ShortcutDef): string {
+export function formatShortcut(
+	def: Pick<ShortcutDef, "ctrl" | "meta" | "shift" | "alt" | "key">,
+): string {
 	const parts: string[] = [];
 	const isMac = navigator.platform.toLowerCase().includes("mac");
 	if (def.meta) parts.push(isMac ? "⌘" : "Win");
@@ -113,10 +114,4 @@ function formatKey(def: ShortcutDef): string {
 	else if (def.key === "esc") parts.push("Esc");
 	else parts.push(def.key);
 	return parts.join(" ");
-}
-
-export function formatShortcut(
-	def: Pick<ShortcutDef, "ctrl" | "meta" | "shift" | "alt" | "key">,
-): string {
-	return formatKey(def as ShortcutDef);
 }

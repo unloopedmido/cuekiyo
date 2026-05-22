@@ -44,50 +44,50 @@ const USER_GATED_STATUSES = new Set<ProjectStatus>([
 export const PIPELINE_STAGES: PipelineStage[] = [
   {
     id: "setup",
-    label: "Setup",
-    description: "Project inputs and export defaults",
+    label: "Start",
+    description: "Name the compilation and pick anime",
     statuses: ["DRAFT"],
   },
   {
     id: "themes",
-    label: "Themes",
-    description: "Anime theme data is gathered",
+    label: "Load themes",
+    description: "Gather opening and ending tracks",
     statuses: ["LOADING_THEMES"],
   },
   {
     id: "songs",
-    label: "Songs",
+    label: "Pick songs",
     description: "Choose the music that sets the edit",
     statuses: ["SONG_SELECTION", "SOURCING"],
   },
   {
     id: "candidates",
-    label: "Candidates",
-    description: "Review sourced clips for each song",
+    label: "Review clips",
+    description: "Pick the best source for each song",
     statuses: ["AWAITING_CANDIDATES"],
   },
   {
     id: "processing",
-    label: "Processing",
-    description: "Download, prepare, cut, and overlay clips",
+    label: "Prepare clips",
+    description: "Download, trim, and add overlays",
     statuses: ["DOWNLOADING", "PROBING_NORMALIZING", "CUTTING", "OVERLAYING"],
   },
   {
     id: "order",
-    label: "Order",
-    description: "Arrange the final sequence",
+    label: "Set order",
+    description: "Arrange the sequence before export",
     statuses: ["AWAITING_RENDER_ORDER"],
   },
   {
     id: "render",
-    label: "Render",
-    description: "Create the final MP4",
+    label: "Render video",
+    description: "Combine clips into the final MP4",
     statuses: ["RENDERING"],
   },
   {
     id: "output",
-    label: "Output",
-    description: "Review, download, or open the result",
+    label: "Finished",
+    description: "Watch, download, or open the file",
     statuses: ["COMPLETED", "FAILED", "CANCELLED"],
   },
 ];
@@ -95,7 +95,7 @@ export const PIPELINE_STAGES: PipelineStage[] = [
 export const STATUS_COPY: Record<ProjectStatus, StatusCopy> = {
   DRAFT: {
     label: "Ready to start",
-    description: "Project details are saved. Load themes to begin.",
+    description: "Compilation saved. Load themes when you are ready.",
     tone: "idle",
   },
   LOADING_THEMES: {

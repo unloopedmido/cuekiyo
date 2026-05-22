@@ -71,6 +71,7 @@ export const api = {
 				title: string;
 				title_english?: string;
 				image_url?: string;
+				year?: number;
 			}[]
 		>(`/anime/search?q=${encodeURIComponent(q)}`),
 	binaries: () =>
