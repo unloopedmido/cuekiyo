@@ -6,7 +6,7 @@ Local web dashboard for building anime opening/ending music video compilations.
 
 | Layer | Tech |
 |-------|------|
-| Frontend | React 19, Vite 6, TypeScript, Tailwind 4 |
+| Frontend | React 19, Vite 7, TypeScript, Tailwind 4, shadcn/ui |
 | Backend | FastAPI, SQLite, SQLAlchemy |
 | Media | yt-dlp, ffmpeg/ffprobe (drawtext overlays) |
 | Metadata | Jikan API, YouTube via yt-dlp |
@@ -123,7 +123,9 @@ pytest -q
 
 ```bash
 cd frontend
+npm ci
 npm run build
+npm test
 ```
 
 CI runs both on push (see [`.github/workflows/ci.yml`](.github/workflows/ci.yml)).

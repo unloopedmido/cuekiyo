@@ -7,5 +7,5 @@
 ## Test plan
 
 - [ ] `cd backend && pip install -r requirements-dev.txt && pytest -q`
-- [ ] `cd frontend && npm ci && npm run build`
+- [ ] `cd frontend && npm ci && npm test && npm run build`
 - [ ] Manual pipeline smoke test (optional)
