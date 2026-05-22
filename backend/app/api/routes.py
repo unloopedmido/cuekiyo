@@ -305,7 +305,12 @@ def list_candidates(project_id: str, song_id: str, db: Session = Depends(get_db)
     song = db.get(Song, song_id)
     if not song or song.project_id != project_id:
         raise HTTPException(404, "Song not found")
-    cands = db.query(SongCandidate).filter(SongCandidate.song_id == song_id).order_by(SongCandidate.rank).all()
+    cands = (
+        db.query(SongCandidate)
+        .filter(SongCandidate.song_id == song_id)
+        .order_by(SongCandidate.view_count.desc().nullslast(), SongCandidate.rank)
+        .all()
+    )
     return [CandidateOut.model_validate(c) for c in cands]
 
 

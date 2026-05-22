@@ -2,6 +2,7 @@ import json
 import math
 import re
 import subprocess
+import urllib.parse
 import threading
 import time
 from collections.abc import Callable
@@ -36,6 +37,7 @@ REJECT_KEYWORDS = [
 SHORTS_MAX_DURATION = 60.0
 IDEAL_MIN_DURATION = 60.0
 IDEAL_MAX_DURATION = 120.0
+YOUTUBE_VIEW_SORT = "sp=CAM%253D"
 
 _youtube_semaphore: threading.Semaphore | None = None
 _youtube_semaphore_lock = threading.Lock()
@@ -74,8 +76,30 @@ class CandidateResult:
     raw_metadata: dict = field(default_factory=dict)
 
 
+def _view_sort_key(candidate: CandidateResult) -> int:
+    return candidate.view_count or 0
+
+
 def _normalize(text: str) -> str:
     return re.sub(r"[^\w\s]", " ", text.lower()).strip()
+
+
+def youtube_thumbnail_url(youtube_id: str | None) -> str | None:
+    if not youtube_id:
+        return None
+    return f"https://i.ytimg.com/vi/{youtube_id}/mqdefault.jpg"
+
+
+def _extract_thumbnail(entry: dict) -> str | None:
+    thumb = entry.get("thumbnail")
+    if thumb:
+        return str(thumb)
+    thumbs = entry.get("thumbnails")
+    if isinstance(thumbs, list) and thumbs:
+        for item in reversed(thumbs):
+            if isinstance(item, dict) and item.get("url"):
+                return str(item["url"])
+    return youtube_thumbnail_url(entry.get("id"))
 
 
 def _token_overlap(a: str, b: str) -> float:
@@ -146,7 +170,7 @@ def score_candidate(
             penalty += 8.0
 
     views = entry.get("view_count") or 0
-    view_score = math.log10(max(views, 1)) * 2.0
+    view_score = math.log10(max(views, 1)) * 6.0
 
     title_sim = _token_overlap(title, song_title) * 25.0
     anime_sim = _token_overlap(title, anime_name) * 20.0
@@ -164,7 +188,7 @@ def score_candidate(
         uploader_name=entry.get("uploader") or entry.get("channel"),
         view_count=views if views else None,
         duration=float(duration) if duration is not None else None,
-        thumbnail_url=entry.get("thumbnail"),
+        thumbnail_url=_extract_thumbnail(entry),
         score=score,
         rejection_flags=flags,
         raw_metadata=entry,
@@ -192,13 +216,18 @@ def _run_subprocess(
 
 
 def yt_dlp_search(query: str, max_results: int = 10) -> list[dict]:
+    search_url = (
+        "https://www.youtube.com/results"
+        f"?search_query={urllib.parse.quote_plus(query)}&{YOUTUBE_VIEW_SORT}"
+    )
     cmd = [
         "yt-dlp",
-        f"ytsearch{max_results}:{query}",
+        search_url,
         "--dump-single-json",
         "--flat-playlist",
         "--no-warnings",
         "--skip-download",
+        f"--playlist-end={max_results}",
     ]
     with youtube_slot():
         proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
@@ -235,6 +264,7 @@ def source_candidates_for_song(
     scored.sort(key=lambda c: c.score, reverse=True)
     clean = [c for c in scored if not c.rejection_flags]
     pool = clean if len(clean) >= top_n else scored
+    pool.sort(key=_view_sort_key, reverse=True)
     return pool[:top_n]
 
 
