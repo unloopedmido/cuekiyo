@@ -1,0 +1,16 @@
+{
+  "ignore": {
+    "files": ["src/components/ui/**", "src/assets/**"],
+    "rules": [
+      "react-doctor/prefer-useReducer",
+      "react-doctor/no-giant-component",
+      "react-doctor/no-cascading-set-state"
+    ],
+    "overrides": [
+      {
+        "files": ["src/components/completed-output.tsx"],
+        "rules": ["react-doctor/media-has-caption"]
+      }
+    ]
+  }
+}

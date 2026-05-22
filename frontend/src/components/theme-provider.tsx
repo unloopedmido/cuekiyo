@@ -1,4 +1,3 @@
-/* eslint-disable react-refresh/only-export-components */
 import * as React from "react"
 
 type Theme = "dark" | "light" | "system"
@@ -93,16 +92,13 @@ export function ThemeProvider({
     return defaultTheme
   })
 
-  const setTheme = React.useCallback(
-    (nextTheme: Theme) => {
-      localStorage.setItem(storageKey, nextTheme)
-      setThemeState(nextTheme)
-    },
-    [storageKey]
-  )
+  const setTheme = (nextTheme: Theme) => {
+    localStorage.setItem(storageKey, nextTheme)
+    setThemeState(nextTheme)
+  }
 
-  const applyTheme = React.useCallback(
-    (nextTheme: Theme) => {
+  React.useEffect(() => {
+    const applyTheme = (nextTheme: Theme) => {
       const root = document.documentElement
       const resolvedTheme =
         nextTheme === "system" ? getSystemTheme() : nextTheme
@@ -116,11 +112,8 @@ export function ThemeProvider({
       if (restoreTransitions) {
         restoreTransitions()
       }
-    },
-    [disableTransitionOnChange]
-  )
+    }
 
-  React.useEffect(() => {
     applyTheme(theme)
 
     if (theme !== "system") {
@@ -137,7 +130,7 @@ export function ThemeProvider({
     return () => {
       mediaQuery.removeEventListener("change", handleChange)
     }
-  }, [theme, applyTheme])
+  }, [theme, disableTransitionOnChange])
 
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -204,27 +197,9 @@ export function ThemeProvider({
     }
   }, [defaultTheme, storageKey])
 
-  const value = React.useMemo(
-    () => ({
-      theme,
-      setTheme,
-    }),
-    [theme, setTheme]
-  )
-
   return (
-    <ThemeProviderContext.Provider {...props} value={value}>
+    <ThemeProviderContext {...props} value={{ theme, setTheme }}>
       {children}
-    </ThemeProviderContext.Provider>
+    </ThemeProviderContext>
   )
-}
-
-export const useTheme = () => {
-  const context = React.useContext(ThemeProviderContext)
-
-  if (context === undefined) {
-    throw new Error("useTheme must be used within a ThemeProvider")
-  }
-
-  return context
 }

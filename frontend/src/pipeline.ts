@@ -1,4 +1,4 @@
-import type { ProjectStatus } from "./types";
+import type { ProjectStatus } from "./types"
 
 export type StageId =
   | "setup"
@@ -8,21 +8,27 @@ export type StageId =
   | "processing"
   | "order"
   | "render"
-  | "output";
+  | "output"
 
-export type StatusTone = "idle" | "running" | "attention" | "success" | "danger" | "muted";
+export type StatusTone =
+  | "idle"
+  | "running"
+  | "attention"
+  | "success"
+  | "danger"
+  | "muted"
 
 export interface PipelineStage {
-  id: StageId;
-  label: string;
-  description: string;
-  statuses: ProjectStatus[];
+  id: StageId
+  label: string
+  description: string
+  statuses: ProjectStatus[]
 }
 
 export interface StatusCopy {
-  label: string;
-  description: string;
-  tone: StatusTone;
+  label: string
+  description: string
+  tone: StatusTone
 }
 
 export const RUNNING_STATUSES = new Set<ProjectStatus>([
@@ -33,13 +39,13 @@ export const RUNNING_STATUSES = new Set<ProjectStatus>([
   "CUTTING",
   "OVERLAYING",
   "RENDERING",
-]);
+])
 
 const USER_GATED_STATUSES = new Set<ProjectStatus>([
   "SONG_SELECTION",
   "AWAITING_CANDIDATES",
   "AWAITING_RENDER_ORDER",
-]);
+])
 
 export const PIPELINE_STAGES: PipelineStage[] = [
   {
@@ -90,9 +96,9 @@ export const PIPELINE_STAGES: PipelineStage[] = [
     description: "Watch, download, or open the file",
     statuses: ["COMPLETED", "FAILED", "CANCELLED"],
   },
-];
+]
 
-export const STATUS_COPY: Record<ProjectStatus, StatusCopy> = {
+const STATUS_COPY: Record<ProjectStatus, StatusCopy> = {
   DRAFT: {
     label: "Ready to start",
     description: "Compilation saved. Load themes when you are ready.",
@@ -163,32 +169,35 @@ export const STATUS_COPY: Record<ProjectStatus, StatusCopy> = {
     description: "The project was stopped before completion.",
     tone: "muted",
   },
-};
+}
 
 export function getStatusCopy(status: ProjectStatus): StatusCopy {
-  return STATUS_COPY[status];
+  return STATUS_COPY[status]
 }
 
 export function getProjectStage(status: ProjectStatus): PipelineStage {
-  return PIPELINE_STAGES.find((stage) => stage.statuses.includes(status)) ?? PIPELINE_STAGES[0];
+  return (
+    PIPELINE_STAGES.find((stage) => stage.statuses.includes(status)) ??
+    PIPELINE_STAGES[0]
+  )
 }
 
 export function getProjectAction(status: ProjectStatus): string {
-  if (status === "DRAFT") return "Load themes";
-  if (status === "SONG_SELECTION") return "Review songs";
-  if (status === "AWAITING_CANDIDATES") return "Review candidates";
-  if (status === "AWAITING_RENDER_ORDER") return "Arrange order";
-  if (status === "COMPLETED") return "Open output";
-  if (status === "FAILED") return "Review issue";
-  if (status === "CANCELLED") return "Stopped";
-  return getStatusCopy(status).label;
+  if (status === "DRAFT") return "Load themes"
+  if (status === "SONG_SELECTION") return "Review songs"
+  if (status === "AWAITING_CANDIDATES") return "Review candidates"
+  if (status === "AWAITING_RENDER_ORDER") return "Arrange order"
+  if (status === "COMPLETED") return "Open output"
+  if (status === "FAILED") return "Review issue"
+  if (status === "CANCELLED") return "Stopped"
+  return getStatusCopy(status).label
 }
 
 export function isUserGatedStatus(status: ProjectStatus): boolean {
-  return USER_GATED_STATUSES.has(status);
+  return USER_GATED_STATUSES.has(status)
 }
 
 export function getStageIndex(status: ProjectStatus): number {
-  const stage = getProjectStage(status);
-  return PIPELINE_STAGES.findIndex((item) => item.id === stage.id);
+  const stage = getProjectStage(status)
+  return PIPELINE_STAGES.findIndex((item) => item.id === stage.id)
 }
