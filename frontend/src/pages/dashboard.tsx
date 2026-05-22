@@ -105,15 +105,15 @@ function cardAccent(
   isCompleted: boolean
 ): string {
   if (needsYou) {
-    return "border-primary/35 bg-primary/[0.06] hover:border-primary/55 hover:bg-primary/10"
+    return "fcr-float-2 fcr-glass-lime border-primary/35 bg-primary/[0.06] hover:border-primary/55 hover:bg-primary/10 hover:shadow-[0_0_24px_oklch(0.768_0.233_130.85/0.2)]"
   }
   if (isCompleted) {
-    return "border-border/70 bg-card/25 hover:border-primary/20 hover:bg-card/50"
+    return "fcr-float-1 border-border/70 bg-card/25 hover:border-primary/20 hover:bg-card/50"
   }
   if (tone === "success") {
-    return "border-border/80 bg-card/40 hover:border-primary/25 hover:bg-card/70"
+    return "fcr-float-1 border-border/80 bg-card/40 hover:border-primary/25 hover:bg-card/70"
   }
-  return "border-border/80 bg-card/30 hover:border-border hover:bg-card/60"
+  return "fcr-float-1 border-border/80 bg-card/30 hover:border-border hover:bg-card/60"
 }
 
 export default function Dashboard() {
@@ -240,7 +240,7 @@ export default function Dashboard() {
         title={NAV.projects}
         description="Pick up where you left off, or start a new compilation."
         actions={
-          <Button asChild size="lg">
+          <Button asChild size="lg" className="shadow-[0_0_20px_oklch(0.768_0.233_130.85/0.2)] hover:shadow-[0_0_30px_oklch(0.768_0.233_130.85/0.35)]">
             <Link to="/projects/new">
               <HugeiconsIcon
                 icon={Add01Icon}
@@ -254,7 +254,7 @@ export default function Dashboard() {
       />
 
       {missing.length > 0 && (
-        <Alert>
+        <Alert className="fcr-glass fcr-animate-up fcr-delay-1">
           <AlertTitle>Local tools missing</AlertTitle>
           <AlertDescription>
             {missing.map(([k]) => k).join(", ")} not found. See{" "}
@@ -270,14 +270,14 @@ export default function Dashboard() {
       )}
 
       {error && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="fcr-animate-up fcr-delay-1">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
       {!loading && projects.length > 0 && (
-        <div className="flex flex-col gap-3">
-          <InputGroup className="h-10 w-full max-w-xl bg-muted/20">
+        <div className="flex flex-col gap-3 fcr-animate-up fcr-delay-1">
+          <InputGroup className="h-10 w-full max-w-xl bg-muted/20 backdrop-blur-sm border-border/50">
             <InputGroupAddon align="inline-start">
               <HugeiconsIcon icon={Search01Icon} strokeWidth={2} />
             </InputGroupAddon>
@@ -305,7 +305,10 @@ export default function Dashboard() {
                   type="button"
                   variant={listFilter === id ? "default" : "outline"}
                   size="sm"
-                  className="h-8 rounded-full px-3"
+                  className={cn(
+                    "h-8 rounded-full px-3",
+                    listFilter === id && "shadow-[0_0_12px_oklch(0.768_0.233_130.85/0.2)]"
+                  )}
                   disabled={disabled}
                   title={
                     disabled ? "Nothing needs your input right now" : undefined
@@ -330,11 +333,11 @@ export default function Dashboard() {
         {loading ? (
           <div className="flex flex-col gap-3">
             {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-28 w-full rounded-xl sm:h-24" />
+              <Skeleton key={i} className={`fcr-glass h-28 w-full rounded-xl sm:h-24 fcr-animate-up fcr-delay-${i + 1}`} />
             ))}
           </div>
         ) : projects.length === 0 ? (
-          <Empty className="border border-dashed border-border/80 bg-muted/20 py-16">
+          <Empty className="fcr-glass border border-dashed border-border/80 bg-muted/20 py-16 fcr-animate-scale">
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <HugeiconsIcon icon={Folder01Icon} strokeWidth={2} />
@@ -371,7 +374,8 @@ export default function Dashboard() {
           </div>
         ) : (
           <ul className="flex flex-col gap-3">
-            {filteredProjects.map((p) => {
+            {filteredProjects.map((p, idx) => {
+              const staggerClass = idx < 6 ? `fcr-delay-${idx + 1}` : ""
               const copy = getStatusCopy(p.status)
               const action = getProjectAction(p.status)
               const needsYou =
@@ -387,7 +391,8 @@ export default function Dashboard() {
                 <li key={p.id}>
                   <article
                     className={cn(
-                      "group relative overflow-hidden rounded-xl border transition-[border-color,background-color,box-shadow] duration-150",
+                      "group relative overflow-hidden rounded-xl border transition-[border-color,background-color,box-shadow,transform] duration-200 fcr-animate-up",
+                      staggerClass,
                       cardAccent(copy.tone, needsYou, isCompleted),
                       needsYou && "shadow-sm shadow-primary/10"
                     )}
@@ -443,7 +448,7 @@ export default function Dashboard() {
                         className={cn(
                           "col-start-2 row-start-2 inline-flex w-fit shrink-0 items-center gap-1 self-start rounded-full px-3 py-1.5 text-xs font-medium transition-colors sm:col-start-3 sm:row-start-1 sm:self-center",
                           needsYou
-                            ? "bg-primary text-primary-foreground group-hover:bg-primary/90"
+                            ? "bg-primary text-primary-foreground shadow-[0_0_16px_oklch(0.768_0.233_130.85/0.25)] group-hover:bg-primary/90 group-hover:shadow-[0_0_24px_oklch(0.768_0.233_130.85/0.35)]"
                             : "bg-muted/60 text-foreground group-hover:bg-primary/15 group-hover:text-primary"
                         )}
                       >

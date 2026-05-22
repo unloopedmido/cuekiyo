@@ -16,7 +16,18 @@ function toneVariant(tone: StatusTone): "default" | "secondary" | "destructive" 
 	}
 }
 
+function toneExtra(tone: StatusTone): string {
+	switch (tone) {
+		case "running":
+			return "shadow-[0_0_8px_oklch(0.768_0.233_130.85/0.2)]";
+		case "attention":
+			return "shadow-[0_0_8px_oklch(0.577_0.245_27.325/0.15)]";
+		default:
+			return "";
+	}
+}
+
 export function StatusBadge({ status }: { status: ProjectStatus }) {
 	const copy = getStatusCopy(status);
-	return <Badge variant={toneVariant(copy.tone)}>{copy.label}</Badge>;
+	return <Badge variant={toneVariant(copy.tone)} className={toneExtra(copy.tone)}>{copy.label}</Badge>;
 }
