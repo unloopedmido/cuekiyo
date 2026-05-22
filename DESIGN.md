@@ -5,123 +5,95 @@ description: A calm local creative studio for one-shot anime MV compilation.
 
 <!-- SEED: re-run /impeccable document once there's code to capture the actual tokens and components. -->
 
-# Design System: Anime MV Pipeline
+# Floating Cut Room — Design System
 
-## 1. Overview
+## Vision
 
-**Creative North Star: "The Floating Cut Room"**
+The Floating Cut Room is a video editing pipeline interface that feels like working inside a translucent, layered space — where glass panels float at different depths, lime light traces the path of active processes, and every transition is choreographed like film editing itself.
 
-Anime MV Pipeline should feel like a calm creative studio suspended above the machinery of video production. The user is not operating a server dashboard; they are guiding a local assistant that sources clips, makes sensible choices, and produces a polished compilation. The interface should be mostly monochrome, spacious, and cinematic, with lime used as a precise sign of selection, progress, and creative confidence.
+## Design Principles
 
-The system should borrow from Apple Vision Pro and macOS: quiet surfaces, floating layers, generous spatial transitions, and material that feels physically responsive. Liquid glass is allowed as a signature material for navigation, command surfaces, overlays, and focused review moments. It must not become generic glassmorphism, and it must never reduce readability over thumbnails or video.
+### 1. Liquid Glass Navigation
+- Navigation panels use `backdrop-filter: blur(24px)` with translucent dark surfaces
+- Glass surfaces have subtle light gradients (`::before` pseudo-elements) simulating light refraction
+- Borders are semi-transparent white (`rgba(255,255,255,0.08)`) creating edge definition without hardness
+- Heavy glass variant (`blur(40px)`) for the primary navigation rail
+- Lime-tinted glass variant for active/focused panels
 
-Motion is part of the product identity. Use motion.dev for choreographed transitions, scroll effects, step progression, and continuity between project setup, sourcing, review, rendering, and final output. Animation must explain movement through the workflow, not delay the user or decorate every component equally.
+### 2. Floating Elevation
+- Four elevation levels (`fcr-float-1` through `fcr-float-4`) with layered box-shadows
+- Each level uses multiple shadow layers for realistic depth perception
+- Elements lift on hover with `translateY(-2px)` / `translateY(-4px)` micro-interactions
+- Ambient breathing animation (`fcr-breathe`) for resting state panels
+- Z-axis transforms (`translateZ`) for true spatial depth
 
-**Key Characteristics:**
-- Minimal black-and-white foundation with one lime accent.
-- Floating, spatial dashboard structure instead of dense website layout.
-- Calm studio language, not backend pipeline language.
-- Liquid glass used as a purposeful material, not as the default surface.
-- Heavily choreographed state transitions that respect reduced motion.
+### 3. Choreographed Transitions
+- Entrance animations: `fcr-entrance-fade-up`, `fcr-entrance-fade-left`, `fcr-entrance-scale`
+- Staggered delays (`fcr-stagger-1` through `fcr-stagger-6`) for sequential reveals
+- Custom easing curves: `fcr-ease-out-expo`, `fcr-ease-spring`, `fcr-ease-out-quart`
+- Page-level choreography: panels enter in sequence, not simultaneously
+- Glass entrance animation that transitions backdrop-blur from 0 to full
 
-## 2. Colors
+### 4. Lime as Compositional Accent
+- Lime (`#a3e635`) is used sparingly — for active states, playheads, and key metrics
+- Never used as a dominant surface color
+- Lime glow (`rgba(163,230,53,0.25)`) creates halos around interactive elements
+- Lime pulse animation for status indicators
+- Lime gradient borders on active navigation items
+- Text selection and focus rings use lime
 
-The palette is simple black and white at first glance, but implemented as tinted near-black and off-white neutrals so the surface feels cinematic instead of harsh. Lime is the only accent and should feel sharp, alive, and rare.
+## Component Architecture
 
-### Primary
-- **Signal Lime** ([to be resolved during implementation]): Use for primary actions, selected states, active workflow steps, progress highlights, focus accents, and high-confidence candidate signals. It should appear on no more than 10% of a typical screen.
+### Layout
+- `Layout` — Orchestrates nav + top rail + main content area
+- `Navigation` — Liquid glass sidebar with collapsible sections
+- `Dashboard` — Grid of floating stat cards and panels
 
-### Neutral
-- **Studio Black** ([to be resolved during implementation]): The main dark surface. Use a softened near-black, never pure `#000`.
-- **Soft White** ([to be resolved during implementation]): The main light text and high-contrast surface. Use a warmed off-white, never pure `#fff`.
-- **Glass Smoke** ([to be resolved during implementation]): Translucent floating material for nav, inspectors, review overlays, and command surfaces.
-- **Quiet Line** ([to be resolved during implementation]): Subtle borders, separators, focus containers, and disabled outlines.
+### Surfaces
+- `fcr-glass` — Standard glass panel
+- `fcr-glass-heavy` — Heavier blur for navigation
+- `fcr-glass-lime` — Lime-tinted glass for active/focused panels
+- `fcr-panel` — Glass panel with header + body
+- `fcr-card` — Floating card with hover elevation
 
-### Named Rules
-**The Lime Signal Rule.** Lime is not decoration. It marks action, selection, progress, focus, confidence, or completion.
+### Interactive Elements
+- `fcr-btn-primary` — Lime gradient button with glow shadow
+- `fcr-btn-ghost` — Minimal ghost button with glass border
+- `fcr-btn-glass` — Glass surface button
+- `fcr-timeline-clip` — Draggable clip on timeline track
+- `fcr-timeline-playhead` — Lime playhead with glow
 
-**The Not Pure Black Rule.** The interface may read as black and white, but implementation must tint the extremes so contrast stays elegant and less fatiguing.
+### Status
+- `fcr-status-active` — Lime pulsing dot
+- `fcr-status-queued` — Muted white dot
+- `fcr-status-error` — Red dot with glow
 
-**The Glass With Purpose Rule.** Liquid glass appears only where floating material clarifies hierarchy or creates a focused review moment. It is forbidden as a blanket card style.
+## Color System
 
-## 3. Typography
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--fcr-lime-400` | `#a3e635` | Primary accent |
+| `--fcr-lime-glow` | `rgba(163,230,53,0.25)` | Glow halos |
+| `--fcr-lime-subtle` | `rgba(163,230,53,0.08)` | Tinted backgrounds |
+| `--fcr-surface-base` | `#0a0a0f` | Page background |
+| `--fcr-surface-raised` | `#111118` | Raised surfaces |
+| `--fcr-glass-bg` | `rgba(15,15,20,0.55)` | Glass panel fill |
+| `--fcr-glass-border` | `rgba(255,255,255,0.08)` | Glass edges |
 
-**Display Font:** [font family to be chosen during implementation]
-**Body Font:** [font family to be chosen during implementation]
-**Label/Mono Font:** [font family to be chosen during implementation, if needed]
+## Animation Timing
 
-**Character:** Use a single modern sans family with Apple-ish restraint: clean, human, slightly geometric, and strong at small UI sizes. The safest direction is a variable sans that can carry headings, labels, controls, and dense metadata without changing personality.
+| Token | Duration | Curve | Usage |
+|-------|----------|-------|-------|
+| `--fcr-duration-instant` | 100ms | — | Hover states |
+| `--fcr-duration-fast` | 200ms | out-quart | Button presses |
+| `--fcr-duration-normal` | 350ms | out-expo | Panel transitions |
+| `--fcr-duration-slow` | 500ms | out-expo | Page entrances |
+| `--fcr-duration-grand` | 800ms | out-expo | Layout shifts |
 
-### Hierarchy
-- **Display** ([to be resolved during implementation]): Reserved for onboarding, empty states, and major project moments. Do not use display scale inside dense controls.
-- **Headline** ([to be resolved during implementation]): Project names, workflow checkpoints, and final-output states.
-- **Title** ([to be resolved during implementation]): Section headers, panel titles, and review groups.
-- **Body** ([to be resolved during implementation]): Instructions, confirmation copy, errors, and status explanations. Cap prose at 65-75 characters per line.
-- **Label** ([to be resolved during implementation]): Buttons, fields, metadata, candidate scores, and status chips. Labels should be plain and readable, not all-caps by default.
+## Accessibility
 
-### Named Rules
-**The Native Studio Type Rule.** Typography should feel native to a polished desktop creative tool. Avoid display fonts in labels, buttons, metadata, and job status.
-
-## 4. Elevation
-
-The system uses layered depth: floating panes, liquid material, soft tonal separation, and shadow only where spatial hierarchy needs it. Surfaces should feel like they occupy real depth, but the app must not become a stack of decorative cards.
-
-### Named Rules
-**The Floating Only When Useful Rule.** Floating surfaces are for navigation, active review, command panels, and transient inspectors. Ordinary content should not be wrapped in decorative floating containers.
-
-**The Readability Beats Material Rule.** If blur, transparency, or refraction makes text or video harder to inspect, remove the effect.
-
-## 5. Components
-
-Seed mode does not define final component tokens yet. The following component direction should guide implementation until `/impeccable document` is re-run in scan mode.
-
-### Buttons
-- **Shape:** Quietly rounded, precise, and touchable. Avoid pill shapes unless the control is genuinely a chip or filter.
-- **Primary:** Lime-backed or lime-accented depending on density. Primary actions should feel decisive but not loud.
-- **Hover / Focus:** Use motion.dev for small lift, glow, or material response. Focus must be visible without relying on color alone.
-- **Secondary / Ghost / Tertiary:** Use monochrome material and clear labels. Do not invent unfamiliar button shapes for flavor.
-
-### Chips
-- **Style:** Compact selection controls for song types, candidate status, render settings, and workflow filters.
-- **State:** Selected chips may use lime sparingly. Unselected chips stay monochrome with a clear border or surface change.
-
-### Cards / Containers
-- **Corner Style:** Slightly rounded and restrained. Avoid big rounded SaaS cards.
-- **Background:** Mostly tonal surfaces, with liquid glass reserved for floating or focused layers.
-- **Shadow Strategy:** Ambient, soft, and stateful. No heavy admin-dashboard shadows.
-- **Internal Padding:** Vary spacing by purpose. Dense metadata can be compact; review and final-output surfaces need more breathing room.
-
-### Inputs / Fields
-- **Style:** Native-feeling fields with quiet borders, clear labels, and enough size for minimally tech-literate users.
-- **Focus:** Lime focus cue plus shape, glow, or outline change so the state is not color-only.
-- **Error / Disabled:** Plain language, visible iconography or structure, and no raw backend terms unless logs are open.
-
-### Navigation
-- **Style:** Floating studio rail or top command surface inspired by macOS and Vision Pro, with spatial continuity between dashboard, project setup, review, rendering, and output.
-- **Active State:** Use lime sparingly with position, weight, or material change.
-- **Mobile Treatment:** Preserve workflow clarity first. Collapse navigation structurally rather than shrinking text fluidly.
-
-### Pipeline Stage System
-The pipeline is the signature component. It should show the project moving through setup, theme loading, song review, candidate review, rendering, and output as a spatial sequence. Use choreographed transitions and scroll effects to make progress understandable, with a reduced-motion path that swaps choreography for clear state changes.
-
-## 6. Do's and Don'ts
-
-### Do:
-- **Do** build a mostly black-and-white interface with a single lime accent used for action, selection, progress, focus, and confidence.
-- **Do** use motion.dev for workflow transitions, scroll effects, panel movement, and shared-element continuity.
-- **Do** make the default path feel like one-shot reliable compilation, with advanced controls disclosed progressively.
-- **Do** use liquid glass as a signature material for floating navigation, inspectors, overlays, and review moments.
-- **Do** respect WCAG AA, keyboard navigation, visible focus states, reduced motion, and status indicators that do not rely on color alone.
-- **Do** keep copy creator-facing: "Review candidates", "Rendering final video", "Open output".
-
-### Don't:
-- **Don't** use pure `#000` or pure `#fff`; tint both extremes.
-- **Don't** make the app feel like a content-dense website.
-- **Don't** make it feel like a generic Bootstrap/admin dashboard.
-- **Don't** make it feel like a generic AI SaaS dashboard.
-- **Don't** make it feel like a server-monitoring interface.
-- **Don't** expose every video-editor control at once.
-- **Don't** use anime fan-site aesthetics.
-- **Don't** turn liquid glass into default glassmorphism across every card.
-- **Don't** use decorative motion that does not communicate state, sequence, or spatial continuity.
-- **Don't** use gradient text, colored side-stripe borders, or repeated identical card grids.
+- `prefers-reduced-motion` disables all animations
+- Focus rings use lime accent (`--fcr-lime-400`)
+- All interactive elements have proper ARIA attributes
+- Color contrast meets WCAG AA for text on dark glass surfaces
+- Keyboard navigation supported throughout
