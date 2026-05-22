@@ -18,34 +18,53 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { api } from "../api";
+import { useToast } from "../hooks/useToast";
 import type { Song } from "../types";
+import PulseBlock from "./PulseBlock";
 
-function SortableItem({ song, views }: { song: Song; views: number }) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: song.id });
+function SortableItem({ song, views, index, count, onReorder }: { song: Song; views: number; index: number; count: number; onReorder: (oldIndex: number, newIndex: number) => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: song.id });
   const style = { transform: CSS.Transform.toString(transform), transition };
   return (
     <li
       ref={setNodeRef}
       style={style}
-      className="flex cursor-grab items-center gap-3 rounded-xl border border-white/10 bg-studio/50 px-3 py-3"
+      className="flex cursor-grab items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3"
       {...attributes}
+      onKeyDown={(event) => {
+        if (isDragging) return;
+        if (event.key === "ArrowUp") {
+          if (index > 0) {
+            event.preventDefault();
+            onReorder(index, index - 1);
+          }
+        } else if (event.key === "ArrowDown") {
+          if (index < count - 1) {
+            event.preventDefault();
+            onReorder(index, index + 1);
+          }
+        }
+      }}
       {...listeners}
     >
       <GripVertical size={16} className="text-muted" aria-hidden="true" />
-      <span className="flex-1">
-        <span className="block text-sm font-medium">{song.song_title}</span>
-        <span className="block text-xs text-muted">{song.anime_name}</span>
+      <span className="flex-1 min-w-0">
+        <span className="block text-sm font-medium truncate">{song.song_title}</span>
+        <span className="block type-label text-muted truncate">{song.anime_name}</span>
       </span>
-      <span className="text-xs text-muted">{views.toLocaleString()} views</span>
+      <span className="type-label text-muted">{views.toLocaleString()} views</span>
     </li>
   );
 }
 
 export default function RenderOrder({ projectId, onDone }: { projectId: string; onDone: () => void }) {
+  const { addToast } = useToast();
   const [songs, setSongs] = useState<Song[]>([]);
   const [viewMap, setViewMap] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [sortKey, setSortKey] = useState(0);
+  const [confirmStep, setConfirmStep] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const prevOrder = useRef<Song[]>([]);
 
   useEffect(() => {
@@ -93,29 +112,35 @@ export default function RenderOrder({ projectId, onDone }: { projectId: string; 
   };
 
   const confirm = async () => {
-    await api.updateRenderOrder(
-      projectId,
-      songs.map((s) => s.id),
-    );
-    await api.confirmRenderOrder(projectId);
-    onDone();
+    setSubmitting(true);
+    try {
+      await api.updateRenderOrder(
+        projectId,
+        songs.map((s) => s.id),
+      );
+      await api.confirmRenderOrder(projectId);
+      addToast("Render started", "success");
+      onDone();
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-panel/70">
-      <div className="flex flex-col gap-4 border-b border-white/10 p-5 md:flex-row md:items-center md:justify-between">
+    <div className="py-1">
+      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-3">
           <span className="grid size-10 place-items-center rounded-xl bg-lime/10 text-lime">
             <ListOrdered size={18} aria-hidden="true" />
           </span>
           <div>
-            <h2 className="text-lg font-medium">Arrange render order</h2>
-            <p className="mt-1 text-sm text-muted">Drag clips into the final sequence.</p>
+            <h2 className="type-title">Arrange render order</h2>
+            <p className="type-body mt-1 text-muted">Drag clips into the final sequence.</p>
           </div>
         </div>
         <button
           onClick={autoSort}
-          className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-sm hover:bg-white/[0.06]"
+          className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-sm transition-colors duration-150 hover:bg-white/[0.06]"
         >
           <ArrowDownWideNarrow size={15} aria-hidden="true" />
           Sort by views
@@ -123,11 +148,11 @@ export default function RenderOrder({ projectId, onDone }: { projectId: string; 
       </div>
 
       {sortKey > 0 && (
-        <div className="flex items-center gap-3 border-b border-white/10 px-5 py-2.5">
-          <span className="text-xs text-muted">Sorted by views</span>
+        <div className="mb-4 flex items-center gap-3" aria-live="polite">
+          <span className="type-label text-muted">Sorted by views</span>
           <button
             onClick={undoSort}
-            className="rounded-lg border border-white/10 px-2.5 py-1 text-xs hover:bg-white/[0.06]"
+            className="rounded-lg border border-white/10 px-2.5 py-1 text-xs transition-colors duration-150 hover:bg-white/[0.06]"
           >
             Undo
           </button>
@@ -135,18 +160,25 @@ export default function RenderOrder({ projectId, onDone }: { projectId: string; 
       )}
 
       {loading ? (
-        <div className="space-y-2 p-5">
+        <div className="space-y-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-14 animate-pulse rounded-xl bg-white/[0.07]" />
+            <PulseBlock key={i} className="h-14 rounded-xl" />
           ))}
         </div>
       ) : (
-        <div className="p-5">
+        <div className="py-1">
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
             <SortableContext items={songs.map((s) => s.id)} strategy={verticalListSortingStrategy}>
               <ul className="space-y-2">
-                {songs.map((song) => (
-                  <SortableItem key={song.id} song={song} views={viewMap[song.id] ?? 0} />
+                {songs.map((song, index) => (
+                  <SortableItem
+                    key={song.id}
+                    song={song}
+                    views={viewMap[song.id] ?? 0}
+                    index={index}
+                    count={songs.length}
+                    onReorder={(oldIndex, newIndex) => setSongs(arrayMove(songs, oldIndex, newIndex))}
+                  />
                 ))}
               </ul>
             </SortableContext>
@@ -154,10 +186,30 @@ export default function RenderOrder({ projectId, onDone }: { projectId: string; 
         </div>
       )}
 
-      <div className="sticky bottom-24 flex justify-end border-t border-white/10 bg-panel/95 p-4 backdrop-blur-xl md:bottom-4">
-        <button onClick={confirm} className="rounded-xl bg-lime px-4 py-3 text-sm font-medium text-studio">
-          Confirm order and render
-        </button>
+      <div className="mt-8 flex flex-col gap-3 border-t border-white/[0.08] pt-5 md:flex-row md:items-center md:justify-end">
+        {confirmStep ? (
+          <>
+            <p className="type-body text-muted md:mr-auto">
+              Render {songs.length} clips into the final video? This may take several minutes.
+            </p>
+            <button
+              onClick={() => setConfirmStep(false)}
+              className="rounded-xl px-4 py-3 type-body text-muted transition-colors duration-150 hover:text-soft"
+            >
+              Go back
+            </button>
+            <button disabled={submitting} onClick={confirm} className="rounded-xl bg-lime px-4 py-3 text-sm font-medium text-studio disabled:opacity-45 transition-opacity duration-150 hover:opacity-90 active:opacity-80">
+              {submitting ? "Rendering..." : "Start render"}
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={() => setConfirmStep(true)}
+            className="rounded-xl bg-lime px-4 py-3 text-sm font-medium text-studio transition-opacity duration-150 hover:opacity-90 active:opacity-80"
+          >
+            Confirm order and render
+          </button>
+        )}
       </div>
     </div>
   );

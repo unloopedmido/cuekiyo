@@ -1,20 +1,19 @@
 import { Route, Routes } from "react-router-dom";
+import AppShell from "./components/AppShell";
 import Dashboard from "./pages/Dashboard";
+import ProjectSetup from "./pages/ProjectSetup";
 import ProjectPage from "./pages/ProjectPage";
+import SettingsPage from "./pages/SettingsPage";
 
 export default function App() {
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
-      <header className="mb-8 flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Anime MV Pipeline</h1>
-        <a href="/" className="text-sm text-zinc-400 hover:text-white">
-          Dashboard
-        </a>
-      </header>
-      <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/projects/:id" element={<ProjectPage />} />
-      </Routes>
-    </div>
+    <Routes>
+      <Route element={<AppShell />}>
+        <Route index element={<Dashboard />} />
+        <Route path="projects/new" element={<ProjectSetup />} />
+        <Route path="projects/:id" element={<ProjectPage />} />
+        <Route path="settings" element={<SettingsPage />} />
+      </Route>
+    </Routes>
   );
 }
