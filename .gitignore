@@ -30,3 +30,9 @@ Thumbs.db
 # Agent tooling (local only)
 .agents/
 skills-lock.json
+.impeccable/
+.superpowers/
+frontend/.pi-lens/
+progress.md
+worker-batch1/
+worker-batch2/
