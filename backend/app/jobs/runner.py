@@ -23,11 +23,12 @@ from app.jobs.parallel import ParallelProgress, resolve_ffmpeg_workers, run_para
 from app.jobs.websocket_manager import ws_manager
 from app.models import AnimeCache, AppLock, Job, JobLog, Project, Song, SongCandidate, ThemeSong
 from app.services import ffmpeg_engine, heatmap, overlay_renderer, theme_parser, youtube_sourcer
-from app.services import jikan_client
+from app.services import anime_metadata
 from app.services.paths import (
     final_output_path,
     song_clean_clip_path,
     song_download_path,
+    song_overlayed_path,
 )
 from app.state_machine import validate_transition
 
@@ -78,6 +79,7 @@ class _OverlayTask:
     candidate_uploader: str | None
     width: int
     height: int
+    enc: str
 
 
 @dataclass
@@ -556,8 +558,8 @@ class JobRunner:
             self._report_progress(db, job, project, item_index=i, item_total=total, message=step)
 
             with _heartbeat_while_running(db):
-                anime_data = asyncio.run(jikan_client.get_anime(pa.anime_mal_id))
-            fields = jikan_client.anime_to_cache_fields(anime_data)
+                anime_data = asyncio.run(anime_metadata.get_anime(pa.anime_mal_id))
+            fields = anime_metadata.anime_to_cache_fields(anime_data)
             cache = db.get(AnimeCache, pa.anime_mal_id)
             if cache:
                 for k, v in fields.items():
@@ -565,7 +567,8 @@ class JobRunner:
                 cache.cached_at = _utcnow()
             else:
                 db.add(AnimeCache(**fields, cached_at=_utcnow()))
-            openings, endings = jikan_client.extract_themes(anime_data)
+            with _heartbeat_while_running(db):
+                openings, endings = asyncio.run(anime_metadata.get_themes(pa.anime_mal_id))
             parsed = theme_parser.parse_themes(openings, endings, song_types)
             for p in parsed:
                 self._upsert_theme(db, pa.anime_mal_id, p)
@@ -908,6 +911,9 @@ class JobRunner:
         _set_project_status(db, project.id, ProjectStatus.OVERLAYING)
 
     def _run_overlay(self, db: Session, job: Job, project: Project) -> None:
+        from app.enums import Encoder
+
+        enc = ffmpeg_engine.detect_encoder(Encoder(project.encoder))
         songs = list(project.songs)
         total = len(songs)
         progress = ParallelProgress()
@@ -924,10 +930,10 @@ class JobRunner:
             if not clean_clip_path or not _valid_existing_media(clean_clip_path):
                 raise RuntimeError(f"Missing prepared clip for {song_title}")
             song.status = SongStatus.OVERLAYING.value
-            text_files = overlay_renderer.overlay_text_file_paths(project_id, song_id)
-            if all(path.is_file() for path in text_files.values()):
+            overlayed_path = song_overlayed_path(project_id, song_id)
+            if overlayed_path.is_file() and _valid_existing_media(overlayed_path):
                 step = f"Skipping existing overlay for {song_title}"
-                song.overlayed_clip_path = str(clean_clip_path)
+                song.overlayed_clip_path = str(overlayed_path)
                 song.status = SongStatus.READY.value
                 self._log_step(db, job, step)
                 completed = progress.increment()
@@ -944,7 +950,7 @@ class JobRunner:
                 continue
             selected_candidate_id = song.selected_candidate_id
             cand = db.get(SongCandidate, selected_candidate_id) if selected_candidate_id else None
-            self._log_step(db, job, f"Preparing overlay for {song_title}")
+            self._log_step(db, job, f"Rendering overlay for {song_title}")
             tasks.append(
                 _OverlayTask(
                     song_id=song_id,
@@ -958,9 +964,12 @@ class JobRunner:
                     candidate_uploader=cand.uploader_name if cand else None,
                     width=target_width,
                     height=target_height,
+                    enc=enc,
                 )
             )
         db.commit()
+
+        overlay_filter = overlay_renderer.build_png_overlay_filter()
 
         def work(task: _OverlayTask) -> None:
             content = overlay_renderer.build_overlay_content(
@@ -972,20 +981,38 @@ class JobRunner:
                 task.candidate_uploader,
             )
             overlay_renderer.write_overlay_text_files(task.project_id, task.song_id, content)
+            png_path = overlay_renderer.write_overlay_png(
+                task.project_id,
+                task.song_id,
+                content,
+                task.width,
+                task.height,
+            )
+            out_path = song_overlayed_path(task.project_id, task.song_id)
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            cmd = ffmpeg_engine.build_png_overlay_cmd(
+                task.clean_clip_path,
+                png_path,
+                out_path,
+                task.enc,
+                overlay_filter,
+            )
+            ffmpeg_engine.run_ffmpeg(cmd)
 
         def on_complete(task: _OverlayTask, _result: None) -> None:
-            step = f"Preparing overlay for {task.song_title}"
+            step = f"Overlay complete for {task.song_title}"
+            overlayed_path = song_overlayed_path(task.project_id, task.song_id)
 
             def update(wdb: Session, job: Job, project: Project) -> None:
                 song = wdb.get(Song, task.song_id)
                 if song:
-                    song.overlayed_clip_path = str(task.clean_clip_path)
+                    song.overlayed_clip_path = str(overlayed_path)
                     song.status = SongStatus.READY.value
                 wdb.add(
                     JobLog(
                         job_id=job.id,
                         level=LogLevel.INFO.value,
-                        message=f"Overlay metadata ready for {task.song_title}",
+                        message=f"Overlay rendered for {task.song_title}",
                     )
                 )
 
@@ -1003,7 +1030,7 @@ class JobRunner:
             job,
             project,
             tasks,
-            max_workers=min(len(tasks), 4) if tasks else 1,
+            max_workers=min(len(tasks), resolve_ffmpeg_workers(enc)) if tasks else 1,
             worker=work,
             on_complete=on_complete,
         )
@@ -1069,28 +1096,12 @@ class JobRunner:
         )
         clips = [clip_by_song_id[song.id] for song in songs]
 
-        font = overlay_renderer.resolve_font()
-        overlay_filters: list[str] = []
-        for song in songs:
-            text_files = overlay_renderer.overlay_text_file_paths(project.id, song.id)
-            missing = [name for name, path in text_files.items() if not path.is_file()]
-            if missing:
-                raise RuntimeError(f"Missing overlay files for {song.song_title}: {', '.join(missing)}")
-            overlay_filters.append(
-                overlay_renderer.build_drawtext_filter(
-                    text_files,
-                    project.target_width,
-                    project.target_height,
-                    font,
-                )
-            )
-
         out = final_output_path(project.id, project.title)
         out.parent.mkdir(parents=True, exist_ok=True)
         step = "Rendering final video"
         self._log_step(db, job, step)
         self._report_progress(db, job, project, item_index=len(songs), item_total=total, message=step)
-        cmd = ffmpeg_engine.build_render_cmd(clips, overlay_filters, out, settings.fade_seconds, enc)
+        cmd = ffmpeg_engine.build_concat_render_cmd(clips, out, settings.fade_seconds, enc)
         log_fn = self._ffmpeg_log(db, job)
         job_id = job.id
         with _heartbeat_while_running(db):

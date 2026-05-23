@@ -1,7 +1,7 @@
 import { useDeferredValue, useEffect, useState } from "react"
 import { toast } from "sonner"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { LinkSquare01Icon, Search01Icon } from "@hugeicons/core-free-icons"
+import { LinkSquare01Icon, Search01Icon, Tick02Icon } from "@hugeicons/core-free-icons"
 import { api } from "@/api"
 import { errorToMessage } from "@/lib/errors"
 import { nextUnselectedSongId } from "@/lib/candidate-selection"
@@ -195,10 +195,10 @@ export function CandidateSelection({
                           disabled={selecting}
                           onClick={() => void select(song.id, c.id)}
                           className={cn(
-                            "group flex h-full w-full flex-col overflow-hidden rounded-xl border text-left transition-colors",
+                            "group flex h-full w-full flex-col overflow-hidden rounded-xl border text-left transition-[border-color,box-shadow] duration-200",
                             isSelected
-                              ? "border-primary ring-2 ring-primary/30"
-                              : "border-border/80 bg-card/40 hover:border-primary/40"
+                              ? "border-primary/40 shadow-[0_0_16px_oklch(from_var(--primary)_l_c_h_/0.08)]"
+                              : "border-border/60 hover:border-border"
                           )}
                         >
                           <div className="relative aspect-video w-full shrink-0 bg-muted">
@@ -206,7 +206,7 @@ export function CandidateSelection({
                               <img
                                 src={thumb}
                                 alt=""
-                                className="size-full object-cover"
+                                className="size-full object-cover transition-[filter] duration-200 group-hover:brightness-105"
                                 loading="lazy"
                               />
                             ) : (
@@ -215,8 +215,8 @@ export function CandidateSelection({
                               </div>
                             )}
                             {isSelected && (
-                              <span className="absolute top-2 right-2 rounded-md bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground">
-                                Selected
+                              <span aria-label="Selected" className="absolute top-2 right-2 flex size-6 items-center justify-center rounded-full bg-black/60 backdrop-blur-sm shadow-[0_0_8px_oklch(from_var(--primary)_l_c_h_/0.25)]">
+                                <HugeiconsIcon icon={Tick02Icon} strokeWidth={2.5} className="size-3.5 text-primary" />
                               </span>
                             )}
                           </div>

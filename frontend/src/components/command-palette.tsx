@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/command"
 import { NAV } from "@/lib/nav"
 import type { Project } from "@/types"
+import { viewTransitionNavigate } from "@/lib/view-transitions"
 
 export function CommandPalette() {
   const navigate = useNavigate()
@@ -51,7 +52,11 @@ export function CommandPalette() {
         <CommandList>
           <CommandEmpty>No results found.</CommandEmpty>
           <CommandGroup heading="Navigate">
-            <CommandItem onSelect={() => run(() => navigate("/"))}>
+            <CommandItem
+              onSelect={() =>
+                run(() => viewTransitionNavigate(navigate, "/", { direction: "back" }))
+              }
+            >
               {NAV.projects}
             </CommandItem>
             <CommandItem onSelect={() => run(() => navigate("/projects/new"))}>
@@ -68,7 +73,17 @@ export function CommandPalette() {
                 {projects.map((p) => (
                   <CommandItem
                     key={p.id}
-                    onSelect={() => run(() => navigate(`/projects/${p.id}`))}
+                    onSelect={() =>
+                      run(() =>
+                        viewTransitionNavigate(navigate, `/projects/${p.id}`, {
+                          direction: "forward",
+                          state: {
+                            projectTitle: p.title,
+                            projectAnimes: p.animes,
+                          },
+                        })
+                      )
+                    }
                   >
                     {p.title}
                   </CommandItem>

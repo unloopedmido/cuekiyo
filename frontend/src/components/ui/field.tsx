@@ -126,9 +126,14 @@ function FieldTitle({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-function FieldDescription({ className, ...props }: React.ComponentProps<"p">) {
+function FieldDescription({
+  className,
+  id,
+  ...props
+}: React.ComponentProps<"p"> & { id?: string }) {
   return (
     <p
+      id={id}
       data-slot="field-description"
       className={cn(
         "text-left text-xs/relaxed leading-normal font-normal text-muted-foreground group-has-data-horizontal/field:text-balance [[data-variant=legend]+&]:-mt-1.5",
@@ -175,9 +180,11 @@ function FieldError({
   className,
   children,
   errors,
+  id,
   ...props
 }: React.ComponentProps<"div"> & {
   errors?: Array<{ message?: string } | undefined>
+  id?: string
 }) {
   const content = useMemo(() => {
     if (children) {
@@ -212,6 +219,7 @@ function FieldError({
 
   return (
     <div
+      id={id}
       role="alert"
       data-slot="field-error"
       className={cn("text-xs/relaxed font-normal text-destructive", className)}

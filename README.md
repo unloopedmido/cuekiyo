@@ -8,7 +8,7 @@ Local web dashboard for building anime opening/ending music video compilations.
 |-------|------|
 | Frontend | React 19, Vite 8, TypeScript, Tailwind 4, shadcn/ui |
 | Backend | FastAPI, SQLite, SQLAlchemy |
-| Media | yt-dlp, ffmpeg/ffprobe (drawtext overlays) |
+| Media | yt-dlp, ffmpeg/ffprobe (Satori PNG overlays) |
 | Metadata | Jikan API, YouTube via yt-dlp |
 
 ## Requirements
@@ -61,6 +61,8 @@ npm ci
 npm run dev
 ```
 
+Overlay rendering uses Satori (`satori`, `@resvg/resvg-js`) installed by `npm ci`.
+
 Or from the repo root: `npm run dev:frontend`.
 
 Open http://localhost:5173
@@ -73,13 +75,15 @@ Health check: http://127.0.0.1:8000/api/system/binaries — all four entries sho
 
 **New compilation defaults** (song count, clip length, encoder, and similar) are saved in your browser on the **Settings** page.
 
-**Pipeline tuning** (data directory, worker counts, ffmpeg quality, Jikan rate limit, stale lock timeout) is configured via environment variables. Copy `.env.example` to `.env` in the repo root and restart the backend after changes.
+**Pipeline tuning** (data directory, worker counts, ffmpeg quality, anime metadata provider, Jikan/AniList rate limits, stale lock timeout) is configured via environment variables. Copy `.env.example` to `.env` in the repo root and restart the backend after changes.
+
+**Anime metadata** (primary API and automatic fallback) can also be changed on the **Settings** page. Search and artwork use the selected provider first, then fall back to the other. Opening and ending theme lists still come from Jikan because AniList does not expose them.
 
 Legacy values in `data/settings.json` are still read if present, but env vars take precedence and the Settings UI no longer edits them.
 
 ## Pipeline flow
 
-1. Create project → load themes (Jikan)
+1. Create project → load themes (AniList or Jikan for metadata; Jikan for theme songs)
 2. Select songs → auto-source YouTube candidates
 3. Pick one candidate per song → download through overlay stages
 4. Confirm render order → final MP4

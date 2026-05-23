@@ -14,10 +14,11 @@ from app.models import AnimeCache, Job, JobLog, Project, ProjectAnime, Song, Son
 from app.schemas.anime import AnimeSearchResult, ThemeSongOut
 from app.schemas.job import JobLogOut, JobOut
 from app.schemas.project import ProjectCreate, ProjectOut, ProjectUpdate, RenderOrderUpdate
-from app.schemas.song import CandidateOut, CandidateSelectRequest, SongOut, SongSelectRequest
-from app.services import ffmpeg_engine, jikan_client, overlay_renderer
+from app.schemas.settings import AppSettingsOut, AppSettingsUpdate
+from app.services import anime_metadata, ffmpeg_engine, overlay_renderer
 from app.services.paths import project_dir
-from app.config import settings
+from app.schemas.song import CandidateOut, CandidateSelectRequest, SongOut, SongSelectRequest
+from app.config import settings, save_settings
 from app.exceptions import PrerequisiteError
 from app.state_machine import (
     is_deletable,
@@ -217,17 +218,31 @@ def cancel_project(project_id: str, db: Session = Depends(get_db)):
     return {"ok": True}
 
 
+@router.get("/settings", response_model=AppSettingsOut)
+def get_app_settings():
+    provider = settings.anime_metadata_provider
+    if provider not in ("jikan", "anilist"):
+        provider = "jikan"
+    return AppSettingsOut(anime_metadata_provider=provider)
+
+
+@router.put("/settings", response_model=AppSettingsOut)
+def update_app_settings(body: AppSettingsUpdate):
+    updated = save_settings({"anime_metadata_provider": body.anime_metadata_provider})
+    return AppSettingsOut(anime_metadata_provider=updated.anime_metadata_provider)
+
+
 @router.get("/anime/search")
 async def anime_search(q: str, limit: int = 10):
     if len(q) < 2:
         return []
-    results = await jikan_client.search_anime(q, limit=limit)
+    results = await anime_metadata.search_anime(q, limit=limit)
     return [
         AnimeSearchResult(
             mal_id=r.get("mal_id"),
             title=r.get("title", ""),
             title_english=r.get("title_english"),
-            image_url=(r.get("images") or {}).get("jpg", {}).get("image_url"),
+            image_url=r.get("image_url"),
             year=r.get("year"),
         )
         for r in results
@@ -410,6 +425,32 @@ def update_render_order(project_id: str, body: RenderOrderUpdate, db: Session = 
         song_map[sid].render_order = i
     db.commit()
     return {"ok": True}
+
+
+@router.post("/projects/{project_id}/render-again")
+def render_again(project_id: str, db: Session = Depends(get_db)):
+    project = db.get(Project, project_id)
+    if not project:
+        raise HTTPException(404, "Project not found")
+    current = ProjectStatus(project.status)
+    if current != ProjectStatus.COMPLETED:
+        raise HTTPException(400, "Only completed projects can be re-rendered")
+    songs = sorted(project.songs, key=lambda s: s.render_order)
+    if not songs:
+        raise HTTPException(400, "Project has no songs")
+    missing = [
+        s.song_title
+        for s in songs
+        if not s.overlayed_clip_path or not Path(s.overlayed_clip_path).exists()
+    ]
+    if missing:
+        raise HTTPException(400, f"Missing overlay clips for: {', '.join(missing)}")
+    validate_transition(current, ProjectStatus.RENDERING)
+    project.status = ProjectStatus.RENDERING.value
+    project.error_message = None
+    db.commit()
+    job = job_runner.start_job(project_id, JobType.RENDER)
+    return {"jobId": job.id}
 
 
 @router.post("/projects/{project_id}/render-order/confirm")

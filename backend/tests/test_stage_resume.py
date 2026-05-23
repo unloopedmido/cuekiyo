@@ -60,25 +60,19 @@ def test_probe_normalize_skips_existing_valid_output(db_session, tmp_path, monke
 def test_overlay_skips_existing_overlay_files(db_session, tmp_path, monkeypatch):
     project, job, song = _project_with_song(db_session, ProjectStatus.OVERLAYING)
     clean = tmp_path / "clean.mp4"
+    overlayed = tmp_path / "overlayed" / f"{song.id}_overlay.mp4"
+    overlayed.parent.mkdir(parents=True)
     clean.write_bytes(b"valid")
+    overlayed.write_bytes(b"valid")
     song.clean_clip_path = str(clean)
-    song.overlayed_clip_path = str(clean)
+    song.overlayed_clip_path = str(overlayed)
     db_session.commit()
-
-    overlay_dir = tmp_path / "overlays"
-    overlay_dir.mkdir()
-    for name in ("anime", "song", "meta"):
-        (overlay_dir / f"{song.id}_{name}.txt").write_text(name, encoding="utf-8")
 
     runner = JobRunner()
 
     monkeypatch.setattr(
-        "app.services.overlay_renderer.overlay_text_file_paths",
-        lambda project_id, song_id: {
-            "anime": overlay_dir / f"{song_id}_anime.txt",
-            "song": overlay_dir / f"{song_id}_song.txt",
-            "meta": overlay_dir / f"{song_id}_meta.txt",
-        },
+        "app.jobs.runner.song_overlayed_path",
+        lambda project_id, song_id: overlayed,
     )
     monkeypatch.setattr("app.services.ffmpeg_engine.is_valid_media", lambda path: True)
     with patch("app.services.ffmpeg_engine.run_ffmpeg") as run_ffmpeg:

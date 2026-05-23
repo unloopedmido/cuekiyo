@@ -121,6 +121,87 @@ def test_source_candidates_orders_top_results_by_view_count(monkeypatch):
     assert [r.youtube_id for r in results] == ["high-views", "mid-views", "low-views"]
 
 
+def test_source_candidates_prefers_score_over_view_count(monkeypatch):
+    entries = [
+        {
+            "id": "wrong-op",
+            "webpage_url": "https://youtu.be/wrong-op",
+            "title": "One Piece Opening 20 | Hope by Namie Amuro",
+            "duration": 89,
+            "view_count": 44_000_000,
+        },
+        {
+            "id": "correct-op",
+            "webpage_url": "https://youtu.be/correct-op",
+            "title": "One Piece Opening 1 | We Are! by Hiroshi Kitadani",
+            "duration": 89,
+            "view_count": 5_000_000,
+        },
+        {
+            "id": "alternate",
+            "webpage_url": "https://youtu.be/alternate",
+            "title": "Hiroshi Kitadani - We Are! / THE FIRST TAKE",
+            "duration": 89,
+            "view_count": 21_000_000,
+        },
+    ]
+
+    monkeypatch.setattr(
+        youtube_sourcer,
+        "build_search_queries",
+        lambda *args, **kwargs: ["One Piece opening 1 We Are!"],
+    )
+    monkeypatch.setattr(youtube_sourcer, "yt_dlp_search", lambda query, max_results=10: entries)
+
+    results = youtube_sourcer.source_candidates_for_song(
+        "One Piece",
+        "We Are!",
+        "opening",
+        1,
+        "Hiroshi Kitadani",
+        top_n=2,
+    )
+
+    assert [r.youtube_id for r in results] == ["correct-op", "alternate"]
+
+
+def test_source_candidates_excludes_similar_song_titles(monkeypatch):
+    entries = [
+        {
+            "id": "wrong-song",
+            "webpage_url": "https://youtu.be/wrong-song",
+            "title": "Black Clover Opening 10 | Black Catcher by Vickeblanka",
+            "duration": 89,
+            "view_count": 44_000_000,
+        },
+        {
+            "id": "correct-song",
+            "webpage_url": "https://youtu.be/correct-song",
+            "title": "Black Clover Opening 3 | Black Rover by Vickeblanka",
+            "duration": 89,
+            "view_count": 5_000_000,
+        },
+    ]
+
+    monkeypatch.setattr(
+        youtube_sourcer,
+        "build_search_queries",
+        lambda *args, **kwargs: ["Black Clover opening 3 Black Rover"],
+    )
+    monkeypatch.setattr(youtube_sourcer, "yt_dlp_search", lambda query, max_results=10: entries)
+
+    results = youtube_sourcer.source_candidates_for_song(
+        "Black Clover",
+        "Black Rover",
+        "opening",
+        3,
+        "Vickeblanka",
+        top_n=3,
+    )
+
+    assert [r.youtube_id for r in results] == ["correct-song"]
+
+
 def test_yt_dlp_download_success_with_output(tmp_path):
     output = tmp_path / "clip.mp4"
     output.write_bytes(b"video")
@@ -155,6 +236,7 @@ def test_score_candidate_falls_back_to_youtube_thumbnail():
         "Song",
         None,
         "opening",
+        1,
     )
     assert result.thumbnail_url == "https://i.ytimg.com/vi/abc123/mqdefault.jpg"
 

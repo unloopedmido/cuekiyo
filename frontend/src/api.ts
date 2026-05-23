@@ -53,6 +53,10 @@ export const api = {
 		}),
 	retry: (id: string) =>
 		request<{ jobId?: string }>(`/projects/${id}/retry`, { method: "POST" }),
+	renderAgain: (id: string) =>
+		request<{ jobId: string }>(`/projects/${id}/render-again`, {
+			method: "POST",
+		}),
 	cancel: (id: string) =>
 		request<{ ok: boolean }>(`/projects/${id}/cancel`, { method: "POST" }),
 	listJobs: (id: string) => request<Job[]>(`/projects/${id}/jobs`),
@@ -78,6 +82,13 @@ export const api = {
 		request<Record<string, { available: boolean; detail: string }>>(
 			"/system/binaries",
 		),
+	getSettings: () =>
+		request<{ anime_metadata_provider: "jikan" | "anilist" }>("/settings"),
+	updateSettings: (body: { anime_metadata_provider: "jikan" | "anilist" }) =>
+		request<{ anime_metadata_provider: "jikan" | "anilist" }>("/settings", {
+			method: "PUT",
+			body: JSON.stringify(body),
+		}),
 	getOutput: (id: string) =>
 		request<{
 			output_path: string | null;

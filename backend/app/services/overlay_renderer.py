@@ -1,8 +1,11 @@
+import json
+import shutil
 import subprocess
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
-from app.services.paths import resolve_project_path
+from app.services.paths import overlay_png_path, resolve_project_path
 
 
 @dataclass
@@ -12,15 +15,15 @@ class OverlayContent:
     meta_line: str
 
 
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+_OVERLAY_SCRIPT = _REPO_ROOT / "frontend" / "scripts" / "render-overlay.mjs"
+
+
 def _truncate(text: str, max_len: int = 72) -> str:
     text = " ".join(text.split())
     if len(text) <= max_len:
         return text
     return text[: max_len - 1] + "…"
-
-
-def _escape_filter_path(path: Path) -> str:
-    return str(path).replace("\\", "/").replace(":", "\\:")
 
 
 def _font_candidates(bold: bool = True) -> list[str]:
@@ -36,6 +39,7 @@ def _font_candidates(bold: bool = True) -> list[str]:
             "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
             "/usr/share/fonts/TTF/DejaVuSans.ttf",
             "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+            "/usr/share/fonts/liberation/LiberationSans-Regular.ttf",
         ]
     )
     return [p for p in names if Path(p).is_file()]
@@ -64,6 +68,25 @@ def resolve_font() -> str:
     )
 
 
+def resolve_font_regular() -> str:
+    for path in _font_candidates(bold=False):
+        return path
+    try:
+        proc = subprocess.run(
+            ["fc-match", "-f", "%{file}\n", "DejaVu Sans"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if proc.returncode == 0:
+            found = proc.stdout.strip()
+            if found and Path(found).is_file():
+                return found
+    except OSError:
+        pass
+    return resolve_font()
+
+
 def build_overlay_content(
     anime_name: str,
     song_type: str,
@@ -82,6 +105,76 @@ def build_overlay_content(
     )
 
 
+def overlay_script_path() -> Path:
+    return _OVERLAY_SCRIPT
+
+
+def render_overlay_png(
+    content: OverlayContent,
+    width: int,
+    height: int,
+    output_path: Path,
+) -> None:
+    """Render lower-third PNG via the frontend Satori CLI."""
+    script = overlay_script_path()
+    if not script.is_file():
+        raise RuntimeError(f"Overlay renderer script missing: {script}")
+
+    node = shutil.which("node")
+    if not node:
+        raise RuntimeError("Node.js is required for overlay rendering")
+
+    payload = {
+        "width": width,
+        "height": height,
+        "animeName": content.anime_name,
+        "songLine": content.song_line,
+        "metaLine": content.meta_line,
+        "fontBold": resolve_font(),
+        "fontRegular": resolve_font_regular(),
+        "output": str(output_path),
+    }
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8") as tmp:
+        json.dump(payload, tmp)
+        payload_path = tmp.name
+
+    try:
+        proc = subprocess.run(
+            [node, str(script), payload_path],
+            capture_output=True,
+            text=True,
+            check=False,
+            cwd=str(_REPO_ROOT / "frontend"),
+        )
+    finally:
+        Path(payload_path).unlink(missing_ok=True)
+
+    if proc.returncode != 0:
+        detail = (proc.stderr or proc.stdout or "overlay render failed").strip()
+        raise RuntimeError(detail)
+
+    if not output_path.is_file() or output_path.stat().st_size == 0:
+        raise RuntimeError(f"Overlay PNG was not written: {output_path}")
+
+
+def write_overlay_png(project_id: str, song_id: str, content: OverlayContent, width: int, height: int) -> Path:
+    png_path = overlay_png_path(project_id, song_id)
+    render_overlay_png(content, width, height, png_path)
+    return png_path
+
+
+def overlay_text_file_paths(project_id: str, song_id: str) -> dict[str, Path]:
+    """Legacy text artifact paths kept for project data compatibility."""
+    base = resolve_project_path(project_id, "overlays", song_id)
+    return {
+        "anime": base.with_name(f"{song_id}_anime.txt"),
+        "song": base.with_name(f"{song_id}_song.txt"),
+        "meta": base.with_name(f"{song_id}_meta.txt"),
+    }
+
+
 def write_overlay_text_files(project_id: str, song_id: str, content: OverlayContent) -> dict[str, Path]:
     paths = overlay_text_file_paths(project_id, song_id)
     paths["anime"].parent.mkdir(parents=True, exist_ok=True)
@@ -91,59 +184,38 @@ def write_overlay_text_files(project_id: str, song_id: str, content: OverlayCont
     return paths
 
 
-def overlay_text_file_paths(project_id: str, song_id: str) -> dict[str, Path]:
-    base = resolve_project_path(project_id, "overlays", song_id)
-    return {
-        "anime": base.with_name(f"{song_id}_anime.txt"),
-        "song": base.with_name(f"{song_id}_song.txt"),
-        "meta": base.with_name(f"{song_id}_meta.txt"),
-    }
-
-
-def build_drawtext_filter(
-    text_files: dict[str, Path],
-    width: int,
-    height: int,
-    font_path: str,
-) -> str:
-    """Return filter_complex video chain ending in [v]."""
-    font = font_path.replace("\\", "/").replace(":", "\\:")
-    margin_x = 48
-    box_height = 160
-    box_y = height - box_height - 48
-    text_x = margin_x + 28
-    anime_y = box_y + 28
-    song_y = box_y + 68
-    meta_y = box_y + 108
-    box_width = max(width - (margin_x * 2), 320)
-
-    anime_file = _escape_filter_path(text_files["anime"])
-    song_file = _escape_filter_path(text_files["song"])
-    meta_file = _escape_filter_path(text_files["meta"])
-
-    return (
-        f"[0:v]drawbox=x={margin_x}:y={box_y}:w={box_width}:h={box_height}:"
-        f"color=black@0.55:t=fill,"
-        f"drawtext=fontfile='{font}':textfile='{anime_file}':x={text_x}:y={anime_y}:"
-        f"fontsize=28:fontcolor=white,"
-        f"drawtext=fontfile='{font}':textfile='{song_file}':x={text_x}:y={song_y}:"
-        f"fontsize=22:fontcolor=white,"
-        f"drawtext=fontfile='{font}':textfile='{meta_file}':x={text_x}:y={meta_y}:"
-        f"fontsize=16:fontcolor=white@0.85[v]"
-    )
+def build_png_overlay_filter() -> str:
+    """Composite RGBA PNG strip along the bottom of the video."""
+    return "[0:v][1:v]overlay=0:H-h:format=auto,format=yuv420p[v]"
 
 
 def check_overlay_support() -> tuple[bool, str]:
-    ok, detail = _check_ffmpeg_drawtext()
+    ok, detail = _check_ffmpeg_overlay()
     if not ok:
         return False, detail
+
+    node = shutil.which("node")
+    if not node:
+        return False, "node not available"
+
+    script = overlay_script_path()
+    if not script.is_file():
+        return False, f"Missing overlay script: {script.name}"
+
+    satori_pkg = _REPO_ROOT / "frontend" / "node_modules" / "satori"
+    resvg_pkg = _REPO_ROOT / "frontend" / "node_modules" / "@resvg" / "resvg-js"
+    if not satori_pkg.is_dir() or not resvg_pkg.is_dir():
+        return False, "Run npm ci in frontend/ for overlay dependencies"
+
     try:
-        return True, resolve_font()
+        fonts = f"{resolve_font()}, {resolve_font_regular()}"
     except RuntimeError as exc:
         return False, str(exc)
 
+    return True, f"node + satori overlay ({fonts})"
 
-def _check_ffmpeg_drawtext() -> tuple[bool, str]:
+
+def _check_ffmpeg_overlay() -> tuple[bool, str]:
     proc = subprocess.run(
         ["ffmpeg", "-hide_banner", "-filters"],
         capture_output=True,
@@ -152,6 +224,6 @@ def _check_ffmpeg_drawtext() -> tuple[bool, str]:
     )
     if proc.returncode != 0:
         return False, "ffmpeg not available"
-    if " drawtext " not in proc.stdout:
-        return False, "ffmpeg missing drawtext filter"
-    return True, "ffmpeg drawtext available"
+    if " overlay " not in proc.stdout:
+        return False, "ffmpeg missing overlay filter"
+    return True, "ffmpeg overlay available"

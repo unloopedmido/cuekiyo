@@ -61,14 +61,11 @@ def test_prepare_clip_cmd_trims_and_normalizes():
 
 def test_build_render_cmd_single_clip_with_overlay():
     clip = Path("/clip.mp4")
-    overlay = (
-        "[0:v]drawbox=x=0:y=0:w=100:h=100:color=black@0.55:t=fill,"
-        "drawtext=text=Anime[vout]"
-    )
+    overlay = "[0:v]null[vout]"
     with patch("app.services.ffmpeg_engine.has_audio_stream", return_value=True):
         cmd = ffmpeg_engine.build_render_cmd([clip], [overlay], Path("/out.mp4"), 0.5, "libx264")
     joined = " ".join(cmd)
-    assert "drawtext" in joined
+    assert "null" in joined
     assert "-map" in cmd
     assert "[vout]" in joined
     preset_idx = cmd.index("-preset")
@@ -78,8 +75,8 @@ def test_build_render_cmd_single_clip_with_overlay():
 def test_build_render_cmd_multi_clip_xfade_and_overlay():
     clips = [Path("/a.mp4"), Path("/b.mp4")]
     overlays = [
-        "[0:v]drawtext=text=A[v0]",
-        "[0:v]drawtext=text=B[v1]",
+        "[0:v]null[v0]",
+        "[0:v]null[v1]",
     ]
     meta = {"format": {"duration": "10.0"}}
 
@@ -90,7 +87,7 @@ def test_build_render_cmd_multi_clip_xfade_and_overlay():
     joined = " ".join(cmd)
     assert "xfade" in joined
     assert "acrossfade" in joined
-    assert "drawtext" in joined
+    assert "null" in joined
     preset_idx = cmd.index("-preset")
     assert cmd[preset_idx + 1] == "p6"
 

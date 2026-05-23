@@ -8,6 +8,10 @@ def test_valid_draft_to_loading():
     assert can_transition(ProjectStatus.DRAFT, ProjectStatus.LOADING_THEMES)
 
 
+def test_completed_can_rerender():
+    assert can_transition(ProjectStatus.COMPLETED, ProjectStatus.RENDERING)
+
+
 def test_invalid_draft_to_downloading():
     assert not can_transition(ProjectStatus.DRAFT, ProjectStatus.DOWNLOADING)
 

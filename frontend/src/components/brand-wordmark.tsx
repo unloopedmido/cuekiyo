@@ -16,7 +16,7 @@ export function BrandWordmark({
 				to="/"
 				aria-label="MV Pipeline home"
 				className={cn(
-					"flex size-9 items-center justify-center rounded-md font-sans text-sm font-bold tracking-tighter text-primary transition-opacity hover:opacity-85",
+					"flex size-9 items-center justify-center rounded-md font-sans text-base font-bold tracking-tight text-primary transition-opacity hover:opacity-85",
 					className,
 				)}
 			>

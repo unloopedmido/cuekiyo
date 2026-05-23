@@ -8,6 +8,7 @@ import {
   Delete02Icon,
   Folder01Icon,
   MoreVerticalIcon,
+  RefreshIcon,
   Search01Icon,
 } from "@hugeicons/core-free-icons"
 import { api } from "@/api"
@@ -21,6 +22,7 @@ import { errorToMessage } from "@/lib/errors"
 import { NAV } from "@/lib/nav"
 import type { Project, ProjectStatus } from "@/types"
 import { PageHeader } from "@/components/page-header"
+import { ProjectNavLink } from "@/components/project-nav-link"
 import { ProjectThumbnail } from "@/components/project-thumbnail"
 import { StatusBadge } from "@/components/status-badge"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -58,6 +60,7 @@ import {
 } from "@/components/ui/input-group"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
+import { projectVtName } from "@/lib/view-transitions"
 
 type ListFilter = "all" | "attention" | "ready"
 
@@ -105,7 +108,7 @@ function cardAccent(
   isCompleted: boolean
 ): string {
   if (needsYou) {
-    return "fcr-float-2 fcr-glass-lime border-primary/35 bg-primary/[0.06] hover:border-primary/55 hover:bg-primary/10 hover:shadow-[0_0_24px_oklch(0.768_0.233_130.85/0.2)]"
+    return "fcr-float-2 fcr-glass-lime border-primary/35 bg-primary/[0.06] hover:border-primary/55 hover:bg-primary/10 fcr-glow-primary-md-on-hover"
   }
   if (isCompleted) {
     return "fcr-float-1 border-border/70 bg-card/25 hover:border-primary/20 hover:bg-card/50"
@@ -127,6 +130,10 @@ export default function Dashboard() {
   const deferredQuery = useDeferredValue(query)
   const [listFilter, setListFilter] = useState<ListFilter>("all")
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null)
+  const [renderAgainTarget, setRenderAgainTarget] = useState<Project | null>(
+    null
+  )
+  const [renderingAgain, setRenderingAgain] = useState(false)
 
   const load = (options?: { showLoading?: boolean }) => {
     if (options?.showLoading !== false) setLoading(true)
@@ -228,6 +235,21 @@ export default function Dashboard() {
     }
   }
 
+  const handleRenderAgain = async () => {
+    if (!renderAgainTarget) return
+    setRenderingAgain(true)
+    try {
+      await api.renderAgain(renderAgainTarget.id)
+      toast.success("Rendering again")
+      setRenderAgainTarget(null)
+      load({ showLoading: false })
+    } catch (e) {
+      toast.error(errorToMessage(e))
+    } finally {
+      setRenderingAgain(false)
+    }
+  }
+
   const filterOptions: { id: ListFilter; label: string; count: number }[] = [
     { id: "all", label: "All", count: counts.all },
     { id: "attention", label: "Needs you", count: counts.attention },
@@ -240,7 +262,7 @@ export default function Dashboard() {
         title={NAV.projects}
         description="Pick up where you left off, or start a new compilation."
         actions={
-          <Button asChild size="lg" className="shadow-[0_0_20px_oklch(0.768_0.233_130.85/0.2)] hover:shadow-[0_0_30px_oklch(0.768_0.233_130.85/0.35)]">
+          <Button asChild size="lg" className="fcr-glow-primary-md-to-lg">
             <Link to="/projects/new">
               <HugeiconsIcon
                 icon={Add01Icon}
@@ -307,7 +329,7 @@ export default function Dashboard() {
                   size="sm"
                   className={cn(
                     "h-8 rounded-full px-3",
-                    listFilter === id && "shadow-[0_0_12px_oklch(0.768_0.233_130.85/0.2)]"
+                    listFilter === id && "fcr-glow-primary-sm"
                   )}
                   disabled={disabled}
                   title={
@@ -385,7 +407,6 @@ export default function Dashboard() {
                 !needsYou &&
                 !isCompleted &&
                 !["DRAFT", "CANCELLED"].includes(p.status)
-              const href = `/projects/${p.id}`
 
               return (
                 <li key={p.id}>
@@ -397,15 +418,18 @@ export default function Dashboard() {
                       needsYou && "shadow-sm shadow-primary/10"
                     )}
                   >
-                    <Link
-                      to={href}
-                      state={{ projectTitle: p.title }}
+                    <ProjectNavLink
+                      project={p}
                       className="grid grid-cols-[4rem_minmax(0,1fr)] grid-rows-[auto_auto] items-start gap-x-3 gap-y-2 p-4 pr-14 sm:grid-cols-[5rem_minmax(0,1fr)_auto] sm:grid-rows-1 sm:items-center sm:gap-x-4 sm:gap-y-0 sm:p-5 sm:pr-16"
                     >
-                      <ProjectThumbnail
-                        animes={p.animes}
+                      <div
                         className="col-start-1 row-start-1 row-span-2 self-center sm:row-span-1"
-                      />
+                        style={{
+                          viewTransitionName: projectVtName("thumb", p.id),
+                        }}
+                      >
+                        <ProjectThumbnail animes={p.animes} />
+                      </div>
                       <div className="col-start-2 row-start-1 flex min-w-0 flex-col gap-2">
                         <div className="flex flex-wrap items-center gap-2">
                           <StatusBadge status={p.status} />
@@ -421,6 +445,9 @@ export default function Dashboard() {
                                 ? "text-sm sm:text-base"
                                 : "text-base sm:text-lg"
                             )}
+                            style={{
+                              viewTransitionName: projectVtName("title", p.id),
+                            }}
                           >
                             {p.title}
                           </h2>
@@ -448,7 +475,7 @@ export default function Dashboard() {
                         className={cn(
                           "col-start-2 row-start-2 inline-flex w-fit shrink-0 items-center gap-1 self-start rounded-full px-3 py-1.5 text-xs font-medium transition-colors sm:col-start-3 sm:row-start-1 sm:self-center",
                           needsYou
-                            ? "bg-primary text-primary-foreground shadow-[0_0_16px_oklch(0.768_0.233_130.85/0.25)] group-hover:bg-primary/90 group-hover:shadow-[0_0_24px_oklch(0.768_0.233_130.85/0.35)]"
+                            ? "bg-primary text-primary-foreground fcr-glow-primary-lg-on-group-hover group-hover:bg-primary/90"
                             : "bg-muted/60 text-foreground group-hover:bg-primary/15 group-hover:text-primary"
                         )}
                       >
@@ -459,7 +486,7 @@ export default function Dashboard() {
                           className="size-3.5 transition-transform group-hover:translate-x-0.5"
                         />
                       </span>
-                    </Link>
+                    </ProjectNavLink>
 
                     <div className="absolute inset-y-0 right-3 flex items-center sm:right-4">
                       <DropdownMenu>
@@ -477,6 +504,18 @@ export default function Dashboard() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          {isCompleted && (
+                            <DropdownMenuItem
+                              onClick={() => setRenderAgainTarget(p)}
+                            >
+                              <HugeiconsIcon
+                                icon={RefreshIcon}
+                                strokeWidth={2}
+                                data-icon="inline-start"
+                              />
+                              Render again
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem
                             variant="destructive"
                             onClick={() => setDeleteTarget(p)}
@@ -498,6 +537,30 @@ export default function Dashboard() {
           </ul>
         )}
       </section>
+
+      <AlertDialog
+        open={!!renderAgainTarget}
+        onOpenChange={(open) => !open && setRenderAgainTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Render again?</AlertDialogTitle>
+            <AlertDialogDescription>
+              &ldquo;{renderAgainTarget?.title}&rdquo; will be rebuilt from its
+              existing clips and settings. This can take several minutes.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void handleRenderAgain()}
+              disabled={renderingAgain}
+            >
+              Render again
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog
         open={!!deleteTarget}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Link, useLocation, useParams } from "react-router-dom"
+import { useLocation, useParams } from "react-router-dom"
 import { toast } from "sonner"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { RefreshIcon } from "@hugeicons/core-free-icons"
@@ -7,13 +7,14 @@ import { api, connectWebSocket } from "@/api"
 import { usePolling } from "@/hooks/usePolling"
 import { errorToMessage } from "@/lib/errors"
 import { RUNNING_STATUSES, getStatusCopy, isUserGatedStatus } from "@/pipeline"
-import type { ProgressEvent, Project } from "@/types"
+import type { ProgressEvent, Project, Song } from "@/types"
 import { CandidateSelection } from "@/components/candidate-selection"
 import { CompletedOutput } from "@/components/completed-output"
 import { CompilationSummary } from "@/components/compilation-summary"
-import { PageHeader } from "@/components/page-header"
+import { ProjectMorphHeader } from "@/components/project-morph-header"
 import { PipelineStepper } from "@/components/pipeline-stepper"
 import { ProgressPanel } from "@/components/progress-panel"
+import { ProjectsNavLink } from "@/components/projects-nav-link"
 import { RenderOrder } from "@/components/render-order"
 import { SongSelection } from "@/components/song-selection"
 import { StatusBadge } from "@/components/status-badge"
@@ -22,6 +23,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { usePageMeta } from "@/context/page-meta"
+import {
+  type ProjectNavState,
+} from "@/lib/view-transitions"
 
 function loadProject(
   id: string,
@@ -37,8 +41,8 @@ function loadProject(
 export default function ProjectPage() {
   const { id } = useParams<{ id: string }>()
   const location = useLocation()
-  const navTitle = (location.state as { projectTitle?: string } | null)
-    ?.projectTitle
+  const navState = (location.state as ProjectNavState | null) ?? null
+  const navTitle = navState?.projectTitle
   const [project, setProject] = useState<Project | null>(null)
   const [progress, setProgress] = useState<ProgressEvent | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -94,10 +98,17 @@ export default function ProjectPage() {
   if (!id) return null
 
   if (!project) {
+    const previewAnimes = navState?.projectAnimes ?? []
+    const previewTitle = navTitle ?? "Loading…"
+
     return (
       <div className="flex flex-col gap-6">
-        <Skeleton className="h-10 w-72" />
-        <div className="grid gap-8 lg:grid-cols-[220px_1fr]">
+        <ProjectMorphHeader
+          projectId={id}
+          title={previewTitle}
+          animes={previewAnimes}
+        />
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] lg:gap-10">
           <Skeleton className="h-80 rounded-xl" />
           <Skeleton className="h-64 rounded-xl" />
         </div>
@@ -107,8 +118,10 @@ export default function ProjectPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-8">
-      <PageHeader
+      <ProjectMorphHeader
+        projectId={id}
         title={project.title}
+        animes={project.animes}
         description={
           project.status === "COMPLETED" ? undefined : statusCopy?.description
         }
@@ -131,6 +144,7 @@ export default function ProjectPage() {
           {running && (
             <ProgressPanel
               projectId={id}
+              projectAnimes={project.animes}
               projectStatus={project.status}
               progress={displayedProgress}
               onCancel={() =>
@@ -159,7 +173,11 @@ export default function ProjectPage() {
             <RenderOrder projectId={id} onDone={refresh} />
           )}
           {project.status === "COMPLETED" && (
-            <CompletedOutput projectId={id} project={project} />
+            <CompletedOutput
+              projectId={id}
+              project={project}
+              onRenderStarted={refresh}
+            />
           )}
 
           {project.status === "DRAFT" && (
@@ -248,12 +266,9 @@ export default function ProjectPage() {
               <p className="font-medium text-foreground">Compilation stopped</p>
               <p className="mt-2">
                 This project was cancelled before export.{" "}
-                <Link
-                  to="/"
-                  className="text-primary underline-offset-4 hover:underline"
-                >
+                <ProjectsNavLink className="text-primary underline-offset-4 hover:underline">
                   Back to projects
-                </Link>
+                </ProjectsNavLink>
                 .
               </p>
             </section>

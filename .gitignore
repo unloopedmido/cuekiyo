@@ -3,12 +3,6 @@ data/
 .env
 .env.local
 
-# AI tooling (local only)
-AGENTS.md
-DESIGN.md
-PRODUCT.md
-PRODUCT.MD
-
 # Python
 backend/.venv/
 backend/__pycache__/
@@ -32,13 +26,3 @@ frontend/dist/
 *.swp
 .DS_Store
 Thumbs.db
-
-# Agent tooling (local only)
-.agents/
-skills-lock.json
-.impeccable/
-.superpowers/
-frontend/.pi-lens/
-progress.md
-worker-batch1/
-worker-batch2/

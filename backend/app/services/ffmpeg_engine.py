@@ -303,6 +303,35 @@ def build_overlay_cmd(
     ]
 
 
+def build_png_overlay_cmd(
+    input_path: Path,
+    png_path: Path,
+    output_path: Path,
+    video_encoder: str,
+    video_filter: str,
+) -> list[str]:
+    """Composite a lower-third PNG onto a clip."""
+    return [
+        "ffmpeg",
+        "-y",
+        *_hw_decode_prefix(input_path, video_encoder),
+        "-i",
+        str(input_path),
+        "-i",
+        str(png_path),
+        "-filter_complex",
+        video_filter,
+        "-map",
+        "[v]",
+        "-map",
+        "0:a?",
+        *video_encode_args(video_encoder, final=False),
+        "-c:a",
+        "copy",
+        str(output_path),
+    ]
+
+
 def build_silent_audio_cmd(input_path: Path, output_path: Path) -> list[str]:
     """Add a stereo silent audio track when the clip has video but no audio."""
     return [

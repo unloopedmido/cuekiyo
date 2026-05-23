@@ -55,8 +55,11 @@ def _env_float(key: str) -> float | None:
 class Settings(BaseModel):
     data_dir: Path = _DEFAULT_DATA_DIR
     db_path: Path | None = None
+    anime_metadata_provider: str = "jikan"
     jikan_base_url: str = "https://api.jikan.moe/v4"
     jikan_rate_limit_seconds: float = 0.35
+    anilist_graphql_url: str = "https://graphql.anilist.co"
+    anilist_rate_limit_seconds: float = 0.7
     transition_seconds: float = 0.5
     fade_seconds: float = 0.5
     ffmpeg_crf: int = 18
@@ -102,8 +105,11 @@ def _apply_env_overrides(data: dict) -> dict:
     env_map: list[tuple[str, str, type]] = [
         ("PIPELINE_DATA_DIR", "data_dir", Path),
         ("PIPELINE_DB_PATH", "db_path", Path),
+        ("PIPELINE_ANIME_METADATA_PROVIDER", "anime_metadata_provider", str),
         ("PIPELINE_JIKAN_BASE_URL", "jikan_base_url", str),
         ("PIPELINE_JIKAN_RATE_LIMIT_SECONDS", "jikan_rate_limit_seconds", float),
+        ("PIPELINE_ANILIST_GRAPHQL_URL", "anilist_graphql_url", str),
+        ("PIPELINE_ANILIST_RATE_LIMIT_SECONDS", "anilist_rate_limit_seconds", float),
         ("PIPELINE_TRANSITION_SECONDS", "transition_seconds", float),
         ("PIPELINE_FADE_SECONDS", "fade_seconds", float),
         ("PIPELINE_FFMPEG_CRF", "ffmpeg_crf", int),
@@ -131,6 +137,29 @@ def load_settings() -> Settings:
         data = Settings(data_dir=_DEFAULT_DATA_DIR).model_dump()
     data = _apply_env_overrides(data)
     return Settings.model_validate(data)
+
+
+def _settings_to_json(data: dict) -> dict:
+    out = dict(data)
+    if isinstance(out.get("data_dir"), Path):
+        out["data_dir"] = out["data_dir"].as_posix()
+    if isinstance(out.get("db_path"), Path):
+        out["db_path"] = out["db_path"].as_posix()
+    return out
+
+
+def save_settings(updates: dict) -> Settings:
+    global settings
+    path = settings_file(settings.data_dir)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists():
+        stored = json.loads(path.read_text(encoding="utf-8"))
+    else:
+        stored = _settings_to_json(settings.model_dump())
+    stored.update(updates)
+    path.write_text(json.dumps(stored, indent=2), encoding="utf-8")
+    settings = load_settings()
+    return settings
 
 
 settings = load_settings()

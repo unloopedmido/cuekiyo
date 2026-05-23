@@ -19,9 +19,9 @@ function toneVariant(tone: StatusTone): "default" | "secondary" | "destructive" 
 function toneExtra(tone: StatusTone): string {
 	switch (tone) {
 		case "running":
-			return "shadow-[0_0_8px_oklch(0.768_0.233_130.85/0.2)]";
+			return "fcr-glow-primary-xs";
 		case "attention":
-			return "shadow-[0_0_8px_oklch(0.577_0.245_27.325/0.15)]";
+			return "fcr-glow-destructive-xs";
 		default:
 			return "";
 	}

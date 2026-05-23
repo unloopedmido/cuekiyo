@@ -28,10 +28,14 @@ REJECT_KEYWORDS = [
     "1 hour",
     "extended",
     "loop",
-    "lyrics",
     "karaoke",
     "shorts",
     "#shorts",
+]
+
+# Soft penalties only — lyrics uploads are often the best official opening uploads.
+SOFT_PENALTY_KEYWORDS = [
+    "lyrics",
 ]
 
 SHORTS_MAX_DURATION = 60.0
@@ -76,8 +80,8 @@ class CandidateResult:
     raw_metadata: dict = field(default_factory=dict)
 
 
-def _view_sort_key(candidate: CandidateResult) -> int:
-    return candidate.view_count or 0
+def _candidate_sort_key(candidate: CandidateResult) -> tuple[float, int]:
+    return (candidate.score, candidate.view_count or 0)
 
 
 def _normalize(text: str) -> str:
@@ -102,6 +106,18 @@ def _extract_thumbnail(entry: dict) -> str | None:
     return youtube_thumbnail_url(entry.get("id"))
 
 
+def _song_tokens(text: str) -> set[str]:
+    return {token for token in _normalize(text).split() if token}
+
+
+def _song_token_coverage(title: str, song_title: str) -> float:
+    song_tokens = _song_tokens(song_title)
+    if not song_tokens:
+        return 0.0
+    title_tokens = _song_tokens(title)
+    return len(song_tokens & title_tokens) / len(song_tokens)
+
+
 def _token_overlap(a: str, b: str) -> float:
     ta = set(_normalize(a).split())
     tb = set(_normalize(b).split())
@@ -120,13 +136,28 @@ def build_search_queries(
     op_ed = "OP" if song_type == "opening" else "ED"
     type_word = "opening" if song_type == "opening" else "ending"
     base = [
+        f"{anime_name} {type_word} {song_number} {song_title}",
+        f"{anime_name} {op_ed} {song_number} {song_title}",
         f"{anime_name} {song_title} {type_word}",
         f"{anime_name} {op_ed}{song_number} {song_title}",
     ]
     if artist:
+        base.append(f"{anime_name} {type_word} {song_number} {artist}")
         base.append(f"{anime_name} {song_title} {artist}")
-        base.append(f"{anime_name} {op_ed}{song_number} {artist}")
     return base
+
+
+def _extract_sequence_number(title: str, song_type: str) -> int | None:
+    title_lower = title.lower()
+    if song_type == "opening":
+        patterns = (r"opening\s*#?\s*(\d+)", r"\bop\s*#?\s*(\d+)")
+    else:
+        patterns = (r"ending\s*#?\s*(\d+)", r"\bed\s*#?\s*(\d+)")
+    for pattern in patterns:
+        match = re.search(pattern, title_lower)
+        if match:
+            return int(match.group(1))
+    return None
 
 
 def _dedupe_queries(queries: list[str]) -> list[str]:
@@ -142,12 +173,23 @@ def _dedupe_queries(queries: list[str]) -> list[str]:
     return deduped
 
 
+def _is_relevant_candidate(
+    title: str,
+    song_title: str,
+    artist: str | None,
+    song_type: str,
+    song_number: int,
+) -> bool:
+    return _song_token_coverage(title, song_title) >= 1.0
+
+
 def score_candidate(
     entry: dict,
     anime_name: str,
     song_title: str,
     artist: str | None,
     song_type: str,
+    song_number: int,
 ) -> CandidateResult:
     title = entry.get("title") or ""
     title_lower = title.lower()
@@ -158,6 +200,10 @@ def score_candidate(
         if kw in title_lower:
             flags.append(kw)
             penalty += 15.0
+
+    for kw in SOFT_PENALTY_KEYWORDS:
+        if kw in title_lower:
+            penalty += 5.0
 
     duration = entry.get("duration")
     if duration is not None:
@@ -172,14 +218,28 @@ def score_candidate(
     views = entry.get("view_count") or 0
     view_score = math.log10(max(views, 1)) * 6.0
 
-    title_sim = _token_overlap(title, song_title) * 25.0
+    title_coverage = _song_token_coverage(title, song_title)
+    title_sim = title_coverage * 30.0
+    if title_coverage >= 1.0:
+        title_sim += 5.0
+    elif title_coverage > 0:
+        penalty += 20.0
+
     anime_sim = _token_overlap(title, anime_name) * 20.0
     artist_sim = _token_overlap(title, artist or "") * 15.0 if artist else 0.0
     type_bonus = 5.0 if ("opening" in title_lower and song_type == "opening") or (
         "ending" in title_lower and song_type == "ending"
     ) else 0.0
 
-    score = title_sim + anime_sim + artist_sim + view_score + type_bonus - penalty
+    sequence_bonus = 0.0
+    sequence_number = _extract_sequence_number(title, song_type)
+    if sequence_number is not None:
+        if sequence_number == song_number:
+            sequence_bonus = 30.0
+        else:
+            penalty += 25.0
+
+    score = title_sim + anime_sim + artist_sim + view_score + type_bonus + sequence_bonus - penalty
 
     return CandidateResult(
         youtube_id=entry.get("id") or "",
@@ -257,14 +317,16 @@ def source_candidates_for_song(
             if not vid or vid in seen_ids:
                 continue
             seen_ids.add(vid)
-            result = score_candidate(entry, anime_name, song_title, artist, song_type)
-            if result.youtube_id:
+            result = score_candidate(entry, anime_name, song_title, artist, song_type, song_number)
+            if result.youtube_id and _is_relevant_candidate(
+                result.title, song_title, artist, song_type, song_number
+            ):
                 scored.append(result)
 
-    scored.sort(key=lambda c: c.score, reverse=True)
+    scored.sort(key=_candidate_sort_key, reverse=True)
     clean = [c for c in scored if not c.rejection_flags]
     pool = clean if len(clean) >= top_n else scored
-    pool.sort(key=_view_sort_key, reverse=True)
+    pool.sort(key=_candidate_sort_key, reverse=True)
     return pool[:top_n]
 
 

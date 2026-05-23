@@ -1,0 +1,124 @@
+{
+  "files": {
+    "src/components/loading-spinner.tsx": {
+      "modifiedRanges": [
+        {
+          "start": 21,
+          "end": 21
+        }
+      ],
+      "importsChanged": false,
+      "lastEdit": "2026-05-22T21:21:05.236Z"
+    },
+    "src/components/completed-output.tsx": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 129
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-05-22T21:24:47.708Z"
+    },
+    "src/components/progress-panel.tsx": {
+      "modifiedRanges": [
+        {
+          "start": 30,
+          "end": 30
+        }
+      ],
+      "importsChanged": false,
+      "lastEdit": "2026-05-22T21:21:05.242Z"
+    },
+    "src/App.tsx": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 69
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-05-22T21:24:48.274Z"
+    },
+    "src/components/layout/app-layout.tsx": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 258
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-05-22T23:37:15.945Z"
+    },
+    "src/components/ui/field.tsx": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 242
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-05-22T21:24:48.560Z"
+    },
+    "src/pages/project-setup.tsx": {
+      "modifiedRanges": [
+        {
+          "start": 188,
+          "end": 188
+        },
+        {
+          "start": 191,
+          "end": 192
+        },
+        {
+          "start": 224,
+          "end": 224
+        },
+        {
+          "start": 240,
+          "end": 240
+        },
+        {
+          "start": 242,
+          "end": 242
+        }
+      ],
+      "importsChanged": false,
+      "lastEdit": "2026-05-22T21:23:22.395Z"
+    },
+    "src/components/error-boundary.tsx": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 56
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-05-22T21:24:49.175Z"
+    },
+    "src/components/app-sidebar.tsx": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 288
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-05-22T23:37:15.172Z"
+    },
+    "src/components/ui/sidebar.tsx": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 712
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-05-22T23:37:15.573Z"
+    }
+  },
+  "turnCycles": 0,
+  "maxCycles": 3,
+  "lastUpdated": "2026-05-22T23:37:15.945Z",
+  "sessionId": "lens-mphjylau-81369c75"
+}

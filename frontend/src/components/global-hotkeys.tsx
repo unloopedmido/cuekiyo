@@ -1,12 +1,14 @@
 import { useEffect } from "react"
-import { useNavigate } from "react-router-dom"
+import { useLocation, useNavigate } from "react-router-dom"
 import { useShortcutsRegistry } from "@/hooks/useKeyboardShortcuts"
 import { openCommandPalette } from "@/lib/command-palette-bus"
+import { viewTransitionNavigate } from "@/lib/view-transitions"
 import { CommandPalette } from "@/components/command-palette"
 import { KeyboardShortcutsHelp } from "@/components/keyboard-shortcuts-help"
 
 export function GlobalHotkeys({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate()
+  const location = useLocation()
   const { register } = useShortcutsRegistry()
 
   const mod = navigator.platform.toLowerCase().includes("mac") ? "meta" : "ctrl"
@@ -25,7 +27,14 @@ export function GlobalHotkeys({ children }: { children: React.ReactNode }) {
         shift: true,
         key: "d",
         description: "Go to projects",
-        handler: () => navigate("/"),
+        handler: () => {
+          const onProjectDetail = /^\/projects\/[^/]+$/.test(location.pathname)
+          if (onProjectDetail) {
+            viewTransitionNavigate(navigate, "/", { direction: "back" })
+          } else {
+            navigate("/")
+          }
+        },
       },
       {
         [mod]: true,
@@ -53,7 +62,7 @@ export function GlobalHotkeys({ children }: { children: React.ReactNode }) {
       },
     ]
     return register(defs as Parameters<typeof register>[0])
-  }, [register, navigate, mod])
+  }, [register, navigate, mod, location.pathname])
 
   return (
     <>

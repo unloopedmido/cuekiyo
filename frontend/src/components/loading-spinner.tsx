@@ -5,18 +5,20 @@ import { cn } from "@/lib/utils"
 export function LoadingSpinner({
   className,
   ...props
-}: React.ComponentProps<"output">) {
+}: React.ComponentProps<"span">) {
   return (
-    <output
-      aria-label="Loading"
+    <span
+      role="status"
       className={cn("inline-flex", className)}
       {...props}
     >
+      <span className="sr-only">Loading…</span>
       <HugeiconsIcon
         icon={Loading03Icon}
         strokeWidth={2}
+        aria-hidden
         className="animate-spin"
       />
-    </output>
+    </span>
   )
 }

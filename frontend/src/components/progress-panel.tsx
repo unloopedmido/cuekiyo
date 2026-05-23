@@ -1,9 +1,17 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Cancel01Icon, File01Icon } from "@hugeicons/core-free-icons"
+import {
+  Cancel01Icon,
+  CheckmarkCircle02Icon,
+  Download01Icon,
+  File01Icon,
+  MusicNote01Icon,
+  Scissor01Icon,
+} from "@hugeicons/core-free-icons"
 import { api } from "@/api"
 import { getStatusCopy } from "@/pipeline"
-import type { Job, ProgressEvent, ProjectStatus } from "@/types"
+import { formatSongType } from "@/lib/nav"
+import type { Job, ProgressEvent, Project, ProjectStatus, Song } from "@/types"
 import { Button } from "@/components/ui/button"
 import {
   Collapsible,
@@ -27,18 +35,80 @@ function isFreshProgress(
 
 function logLevelClass(level: string): string | undefined {
   if (level === "error") return "text-destructive"
-  if (level === "warning") return "text-amber-600 dark:text-amber-400"
+  if (level === "warning") return "text-primary/80"
   return "text-muted-foreground"
 }
+
+const SONG_STATUS_CONFIG: Record<
+  string,
+  { label: string; icon: typeof MusicNote01Icon; tone: "idle" | "running" | "done" | "error" }
+> = {
+  pending: { label: "Queued", icon: MusicNote01Icon, tone: "idle" },
+  sourcing: { label: "Sourcing", icon: MusicNote01Icon, tone: "running" },
+  awaiting_selection: { label: "Awaiting selection", icon: MusicNote01Icon, tone: "idle" },
+  selected: { label: "Selected", icon: CheckmarkCircle02Icon, tone: "done" },
+  downloading: { label: "Downloading", icon: Download01Icon, tone: "running" },
+  normalizing: { label: "Normalizing", icon: MusicNote01Icon, tone: "running" },
+  cutting: { label: "Cutting", icon: Scissor01Icon, tone: "running" },
+  overlaying: { label: "Overlaying", icon: MusicNote01Icon, tone: "running" },
+  ready: { label: "Ready", icon: CheckmarkCircle02Icon, tone: "done" },
+  failed: { label: "Failed", icon: Cancel01Icon, tone: "error" },
+}
+
+function songStatusKey(status: string): string {
+  return SONG_STATUS_CONFIG[status] ? status : "pending"
+}
+
+type AnimeGroup = {
+  animeMalId: number
+  animeName: string
+  imageUrl: string | null
+  songs: Song[]
+}
+
+function groupSongsByAnime(songs: Song[], animes: Project["animes"]): AnimeGroup[] {
+  const animeMap = new Map(animes.map((a) => [a.anime_mal_id, a]))
+  const groups = new Map<number, AnimeGroup>()
+
+  for (const song of songs) {
+    let group = groups.get(song.anime_mal_id)
+    if (!group) {
+      const anime = animeMap.get(song.anime_mal_id)
+      group = {
+        animeMalId: song.anime_mal_id,
+        animeName: song.anime_name,
+        imageUrl: anime?.image_url ?? null,
+        songs: [],
+      }
+      groups.set(song.anime_mal_id, group)
+    }
+    group.songs.push(song)
+  }
+
+  return Array.from(groups.values())
+}
+
+const STAGES_WITH_SONGS = new Set([
+  "SOURCING",
+  "AWAITING_CANDIDATES",
+  "DOWNLOADING",
+  "PROBING_NORMALIZING",
+  "CUTTING",
+  "OVERLAYING",
+  "AWAITING_RENDER_ORDER",
+  "RENDERING",
+])
 
 export function ProgressPanel({
   projectId,
   projectStatus,
+  projectAnimes,
   progress,
   onCancel,
 }: {
   projectId: string
   projectStatus: ProjectStatus
+  projectAnimes: Project["animes"]
   progress: ProgressEvent | null
   onCancel: () => void
 }) {
@@ -47,7 +117,10 @@ export function ProgressPanel({
   >([])
   const [logsOpen, setLogsOpen] = useState(false)
   const [latestJob, setLatestJob] = useState<Job | null>(null)
+  const [songs, setSongs] = useState<Song[]>([])
   const logEndRef = useRef<HTMLLIElement>(null)
+
+  const showSongs = STAGES_WITH_SONGS.has(projectStatus) || projectStatus === "COMPLETED"
 
   useEffect(() => {
     const sync = () => {
@@ -60,6 +133,16 @@ export function ProgressPanel({
     const t = setInterval(sync, 3000)
     return () => clearInterval(t)
   }, [projectId, projectStatus, progress?.jobId])
+
+  useEffect(() => {
+    if (!showSongs) return
+    const load = () => {
+      api.listSongs(projectId).then(setSongs).catch(() => setSongs([]))
+    }
+    load()
+    const t = setInterval(load, 3000)
+    return () => clearInterval(t)
+  }, [projectId, showSongs, progress?.jobId])
 
   useEffect(() => {
     if (!logsOpen) return
@@ -79,16 +162,25 @@ export function ProgressPanel({
     logEndRef.current?.scrollIntoView({ block: "end" })
   }, [logs, logsOpen])
 
+  const animeGroups = useMemo(
+    () => groupSongsByAnime(songs, projectAnimes),
+    [songs, projectAnimes]
+  )
+
   const live = isFreshProgress(progress, projectStatus, latestJob)
   const pct = Math.round(live ? progress.progress : (latestJob?.progress ?? 0))
   const message = live ? progress.message : (latestJob?.current_step ?? "")
   const stage = getStatusCopy(projectStatus)
+
+  // For LOADING_THEMES, show per-anime loading
+  const loadingAnimes = projectStatus === "LOADING_THEMES"
 
   return (
     <section
       className="flex w-full min-w-0 flex-col gap-4 rounded-xl border border-primary/20 bg-primary/5 p-5 md:p-6"
       aria-live="polite"
     >
+      {/* ── Header ──────────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <span className="text-[11px] font-medium tracking-wider text-primary uppercase">
@@ -105,6 +197,115 @@ export function ProgressPanel({
       </div>
       <Progress value={pct} className="h-2" aria-label={stage.label} />
 
+      {/* ── Per-anime / per-song progress ───────────────────── */}
+      {loadingAnimes && (
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-medium text-muted-foreground">
+            Loading themes
+          </p>
+          <ul className="flex flex-col gap-1.5">
+            {projectAnimes.map((anime, i) => (
+              <li
+                key={anime.anime_mal_id}
+                className="flex items-center gap-3 rounded-lg border border-border/60 bg-card/40 px-3 py-2"
+              >
+                {anime.image_url ? (
+                  <img
+                    src={anime.image_url}
+                    alt=""
+                    className="size-8 rounded object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <span className="size-8 rounded bg-muted/60" />
+                )}
+                <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                  {anime.anime_name}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {i === 0 ? "Loading…" : "Queued"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {showSongs && animeGroups.length > 0 && (
+        <div className="flex flex-col gap-4">
+          {animeGroups.map((group) => {
+            const done = group.songs.filter(
+              (s) => s.status === "ready" || s.status === "selected"
+            ).length
+            const total = group.songs.length
+            return (
+              <div key={group.animeMalId} className="flex flex-col gap-2">
+                <div className="flex items-center gap-2.5">
+                  {group.imageUrl ? (
+                    <img
+                      src={group.imageUrl}
+                      alt=""
+                      className="size-7 rounded object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <span className="size-7 rounded bg-muted/60" />
+                  )}
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                    {group.animeName}
+                  </span>
+                  <span className="text-xs tabular-nums text-muted-foreground">
+                    {done}/{total}
+                  </span>
+                </div>
+                <ul className="flex flex-col gap-1">
+                  {group.songs.map((song) => {
+                    const cfg = SONG_STATUS_CONFIG[songStatusKey(song.status)]
+                    const isRunning = cfg.tone === "running"
+                    return (
+                      <li
+                        key={song.id}
+                        className={cn(
+                          "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm",
+                          isRunning
+                            ? "border border-primary/25 bg-primary/[0.04]"
+                            : "border border-transparent"
+                        )}
+                      >
+                        <HugeiconsIcon
+                          icon={cfg.icon}
+                          strokeWidth={2}
+                          className={cn(
+                            "size-4 shrink-0",
+                            cfg.tone === "done" && "text-primary",
+                            cfg.tone === "running" && "text-primary animate-pulse",
+                            cfg.tone === "error" && "text-destructive",
+                            cfg.tone === "idle" && "text-muted-foreground"
+                          )}
+                        />
+                        <span className="min-w-0 flex-1 truncate">
+                          <span className="font-medium">{song.song_title}</span>
+                          {song.artist && (
+                            <span className="text-muted-foreground">
+                              {" "}
+                              · {song.artist}
+                            </span>
+                          )}
+                        </span>
+                        <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
+                          {cfg.label}
+                        </span>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* ── Actions & log ───────────────────────────────────── */}
       <Collapsible
         open={logsOpen}
         onOpenChange={setLogsOpen}
