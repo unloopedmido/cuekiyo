@@ -1,7 +1,7 @@
 /** Creator-facing labels shared across nav, titles, and breadcrumbs. */
 export const NAV = {
 	projects: "Projects",
-	newCompilation: "New compilation",
+	newCompilation: "New project",
 	settings: "Settings",
 } as const;
 

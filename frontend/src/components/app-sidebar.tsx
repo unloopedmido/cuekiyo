@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { NavLink, useLocation, useNavigate } from "react-router-dom"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -22,7 +22,13 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  useSidebar,
 } from "@/components/ui/sidebar"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { Skeleton } from "@/components/ui/skeleton"
 import { NAV } from "@/lib/nav"
 import { viewTransitionNavigate } from "@/lib/view-transitions"
@@ -30,6 +36,12 @@ import { cn } from "@/lib/utils"
 import type { Project } from "@/types"
 
 const MAX_RECENT = 5
+
+function getModKey(): string {
+  if (typeof navigator === "undefined") return "⌘"
+  if (/Win|Linux|Android/i.test(navigator.userAgent)) return "Ctrl"
+  return "⌘"
+}
 
 const ACTIVE_STATUSES = new Set([
   "LOADING_THEMES",
@@ -43,6 +55,30 @@ const ACTIVE_STATUSES = new Set([
 ])
 
 const ERROR_STATUSES = new Set(["FAILED", "CANCELLED"])
+
+const STATUS_LABELS: Record<"active" | "idle" | "done" | "error", string> = {
+  active: "Processing",
+  idle: "Idle",
+  done: "Completed",
+  error: "Failed",
+}
+
+function formatRelativeTime(isoDate: string): string {
+  const now = Date.now()
+  const then = new Date(isoDate).getTime()
+  const seconds = Math.floor((now - then) / 1000)
+  if (seconds < 60) return "just now"
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days}d ago`
+  return new Date(isoDate).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  })
+}
 
 function getSidebarStatus(
   status: Project["status"],
@@ -87,17 +123,17 @@ function SidebarNavItem({
   const navigate = useNavigate()
   const location = useLocation()
   const onProjectDetail = /^\/projects\/[^/]+$/.test(location.pathname)
+  const isActive = end ? location.pathname === to : location.pathname.startsWith(to)
 
   if (morphBack && onProjectDetail && to === "/") {
     return (
-      <SidebarMenuButton asChild tooltip={label}>
+      <SidebarMenuButton asChild tooltip={label} isActive={morphBack && onProjectDetail}>
         <a
           href="/"
           onClick={(e) => {
             e.preventDefault()
             viewTransitionNavigate(navigate, "/", { direction: "back" })
           }}
-          className="sidebar-nav-item"
         >
           <HugeiconsIcon icon={icon} strokeWidth={1.5} size={18} />
           <span>{label}</span>
@@ -107,14 +143,8 @@ function SidebarNavItem({
   }
 
   return (
-    <SidebarMenuButton asChild tooltip={label}>
-      <NavLink
-        to={to}
-        end={end}
-        className={({ isActive }) =>
-          cn("sidebar-nav-item", isActive && "sidebar-nav-active")
-        }
-      >
+    <SidebarMenuButton asChild tooltip={label} isActive={isActive}>
+      <NavLink to={to} end={end}>
         <HugeiconsIcon icon={icon} strokeWidth={1.5} size={18} />
         <span>{label}</span>
       </NavLink>
@@ -124,6 +154,7 @@ function SidebarNavItem({
 
 function RecentProjectItem({ project }: { project: Project }) {
   const navigate = useNavigate()
+  const status = getSidebarStatus(project.status)
 
   return (
     <SidebarMenuButton asChild tooltip={project.title} className="group/recent">
@@ -143,10 +174,23 @@ function RecentProjectItem({ project }: { project: Project }) {
       >
         <span
           className="sidebar-status-dot"
-          data-status={getSidebarStatus(project.status)}
+          data-status={status}
+          role="status"
+          aria-label={STATUS_LABELS[status]}
+          title={STATUS_LABELS[status]}
         />
-        <span className="truncate text-xs leading-tight text-muted-foreground/80 group-hover/recent:text-foreground/90 transition-colors duration-150">
-          {project.title}
+        <span className="min-w-0 flex-col gap-0 leading-none">
+          <span className="truncate text-xs leading-tight text-muted-foreground/80 group-hover/recent:text-foreground/90 transition-colors duration-150">
+            {project.title}
+          </span>
+          <span className="sidebar-recent-meta text-muted-foreground/55">
+            {formatRelativeTime(project.updated_at)}
+            {project.animes.length > 0 && (
+              <span className="before:content-['·'] before:mx-1 before:text-muted-foreground/30">
+                {project.animes.map((a) => a.anime_name).join(", ")}
+              </span>
+            )}
+          </span>
         </span>
       </a>
     </SidebarMenuButton>
@@ -169,12 +213,14 @@ function RecentProjectsSkeleton() {
 }
 
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
+  const { state, isMobile } = useSidebar()
+  const collapsed = !isMobile && state === "collapsed"
   const [recentProjects, setRecentProjects] = useState<Project[]>([])
   const [recentLoading, setRecentLoading] = useState(true)
   const [recentError, setRecentError] = useState(false)
   const [totalProjects, setTotalProjects] = useState(0)
 
-  useEffect(() => {
+  const fetchProjects = useCallback(() => {
     let cancelled = false
     setRecentLoading(true)
     setRecentError(false)
@@ -205,6 +251,21 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
     }
   }, [])
 
+  useEffect(() => {
+    const cleanup = fetchProjects()
+    return cleanup
+  }, [fetchProjects])
+
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        fetchProjects()
+      }
+    }
+    document.addEventListener("visibilitychange", onVisibility)
+    return () => document.removeEventListener("visibilitychange", onVisibility)
+  }, [fetchProjects])
+
   const showRecent =
     recentLoading || recentError || recentProjects.length > 0
 
@@ -214,24 +275,31 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
     <Sidebar
       variant="inset"
       collapsible="icon"
-      className="sidebar-surface border-r border-sidebar-border"
+      className="sidebar-surface"
       {...props}
     >
-      <SidebarHeader className="px-3 pt-5 pb-3">
-        <div className="flex items-center px-2 py-1 group-data-[collapsible=icon]:justify-center">
+      <SidebarHeader
+        className={cn(
+          "pt-5 pb-3",
+          collapsed ? "px-2 pt-4" : "px-3",
+        )}
+      >
+        <div
+          className="flex items-center px-2 py-1"
+        >
           <BrandWordmark
             variant="full"
-            className="min-w-0 group-data-[collapsible=icon]:hidden"
+            className={cn("min-w-0", collapsed && "hidden")}
           />
           <BrandWordmark
             variant="mark"
-            className="hidden group-data-[collapsible=icon]:flex"
+            className={cn("hidden", collapsed && "flex")}
           />
         </div>
-        <div className="sidebar-edge-line mt-3" />
+        {!collapsed ? <div className="sidebar-edge-line mt-3" /> : null}
       </SidebarHeader>
 
-      <SidebarContent className="gap-0 px-3">
+      <SidebarContent className={cn("gap-0", collapsed ? "px-2" : "px-3")}>
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className="gap-0.5">
@@ -250,11 +318,11 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {showRecent && (
+        {showRecent && !collapsed && (
           <>
             <div className="sidebar-section-sep mx-1 my-2.5" />
             <SidebarGroup>
-              <SidebarGroupLabel className="mb-1.5 px-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/40">
+              <SidebarGroupLabel className="mb-1.5 px-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/55">
                 Recent
               </SidebarGroupLabel>
               <SidebarGroupContent>
@@ -263,9 +331,18 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                     <RecentProjectsSkeleton />
                   ) : recentError ? (
                     <SidebarMenuItem>
-                      <span className="px-2 text-xs text-muted-foreground/50">
-                        Could not load projects
-                      </span>
+                      <div className="flex items-center gap-2 px-2">
+                        <span className="text-xs text-muted-foreground/70">
+                          Could not load projects
+                        </span>
+                        <button
+                          type="button"
+                          onClick={fetchProjects}
+                          className="text-[11px] font-medium text-primary/80 transition-colors hover:text-primary"
+                        >
+                          Retry
+                        </button>
+                      </div>
                     </SidebarMenuItem>
                   ) : (
                     recentProjects.map((project) => (
@@ -279,7 +356,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                   <NavLink
                     to="/"
                     end
-                    className="mt-1 block px-2 text-[11px] text-muted-foreground/40 transition-colors hover:text-foreground/60"
+                    className="mt-1 block px-2 text-[11px] text-muted-foreground/55 transition-colors hover:text-foreground/60"
                   >
                     All projects
                   </NavLink>
@@ -290,23 +367,32 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="p-3 pt-0">
-        <button
-          type="button"
-          onClick={openCommandPalette}
-          className="sidebar-cmd group-data-[collapsible=icon]:size-9 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:justify-center"
-        >
-          <HugeiconsIcon
-            icon={CommandIcon}
-            strokeWidth={1.5}
-            size={16}
-            data-icon="inline-start"
-          />
-          <span className="group-data-[collapsible=icon]:hidden">Commands</span>
-          <kbd className="ml-auto hidden rounded border border-sidebar-border/40 bg-sidebar/50 px-1.5 py-0.5 font-mono text-[10px] leading-none text-muted-foreground/40 group-data-[collapsible=icon]:hidden md:inline-block">
-            ⌘K
-          </kbd>
-        </button>
+      <SidebarFooter
+        className={cn("p-3 pt-0", collapsed && "flex items-center justify-center p-2")}
+      >
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={openCommandPalette}
+              className={cn("sidebar-cmd", collapsed && "sidebar-cmd-icon")}
+              aria-label="Commands"
+            >
+              <HugeiconsIcon icon={CommandIcon} strokeWidth={1.5} size={16} />
+              {!collapsed ? (
+                <>
+                  <span>Commands</span>
+                  <kbd className="ml-auto hidden rounded border border-sidebar-border/40 bg-sidebar/50 px-1.5 py-0.5 font-mono text-[10px] leading-none text-muted-foreground/55 md:inline-block">
+                    {getModKey()}K
+                  </kbd>
+                </>
+              ) : null}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right" align="center" hidden={!collapsed || isMobile}>
+            Commands
+          </TooltipContent>
+        </Tooltip>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
