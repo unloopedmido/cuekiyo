@@ -10,6 +10,7 @@ from app.api.routes import router
 from app.config import settings
 from app.database import init_db
 from app.jobs.runner import job_runner, recover_stale_pipeline_jobs
+from app.services.paths import resolve_under_base
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 _FRONTEND_DIST = _REPO_ROOT / "frontend" / "dist"
@@ -43,17 +44,9 @@ def root():
 
 
 def _safe_frontend_path(full_path: str) -> Path | None:
-    if not full_path or full_path.startswith(("api", "/", "\\")):
+    if not full_path or full_path.startswith("api"):
         return None
-    relative = Path(full_path)
-    if relative.is_absolute() or ".." in relative.parts:
-        return None
-    candidate = (_FRONTEND_DIST / relative).resolve()
-    try:
-        candidate.relative_to(_FRONTEND_DIST.resolve())
-    except ValueError:
-        return None
-    return candidate
+    return resolve_under_base(_FRONTEND_DIST, full_path)
 
 
 if settings.serve_frontend and _FRONTEND_DIST.is_dir():

@@ -6,6 +6,7 @@ from app.config import settings
 
 _UNSAFE = re.compile(r"[^\w\s.-]", re.UNICODE)
 _WHITESPACE = re.compile(r"\s+")
+_SAFE_SEGMENT = re.compile(r"^[A-Za-z0-9._-]+$")
 
 
 def sanitize_filename(name: str, max_len: int = 120) -> str:
@@ -16,6 +17,25 @@ def sanitize_filename(name: str, max_len: int = 120) -> str:
     cleaned = _WHITESPACE.sub("_", cleaned)
     cleaned = cleaned.strip("._") or "untitled"
     return cleaned[:max_len]
+
+
+def resolve_under_base(base: Path, relative: str) -> Path | None:
+    """Resolve a relative path under base, rejecting traversal and unsafe segments."""
+    if not relative or relative.startswith(("/", "\\")):
+        return None
+    segments = relative.replace("\\", "/").strip("/").split("/")
+    if not segments:
+        return None
+    for segment in segments:
+        if not segment or segment in {".", ".."} or not _SAFE_SEGMENT.fullmatch(segment):
+            return None
+    base_resolved = base.resolve()
+    target = base_resolved.joinpath(*segments).resolve()
+    try:
+        target.relative_to(base_resolved)
+    except ValueError:
+        return None
+    return target
 
 
 def project_dir(project_id: str) -> Path:

@@ -65,17 +65,24 @@ def normalize_youtube_url(value: str) -> str | None:
     return _YOUTUBE_WATCH_URL.format(video_id=video_id)
 
 
-def _run_yt_dlp_json(video_id: str) -> dict:
-    if not VIDEO_ID_PATTERN.fullmatch(video_id):
+def _validated_video_id(video_id: str) -> str:
+    match = VIDEO_ID_PATTERN.fullmatch(video_id)
+    if not match:
         raise ValueError("Invalid YouTube video ID")
-    url = _YOUTUBE_WATCH_URL.format(video_id=video_id)
+    return match.group(0)
+
+
+def _run_yt_dlp_json(video_id: str) -> dict:
+    safe_id = _validated_video_id(video_id)
+    url = _YOUTUBE_WATCH_URL.format(video_id=safe_id)
     cmd = [
         "yt-dlp",
-        url,
         "--dump-single-json",
         "--no-warnings",
         "--skip-download",
         "--no-playlist",
+        "--",
+        url,
     ]
     with youtube_slot():
         proc = subprocess.run(cmd, capture_output=True, text=True, check=False)

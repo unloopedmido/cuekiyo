@@ -3,6 +3,7 @@ from unittest.mock import patch
 import pytest
 
 from app.main import _safe_frontend_path
+from app.services.paths import resolve_under_base
 from app.services.youtube_url import _run_yt_dlp_json, parse_youtube_id
 
 
@@ -19,7 +20,8 @@ def test_run_yt_dlp_json_uses_validated_video_id():
         result = _run_yt_dlp_json("abc12345678")
     assert result == payload
     cmd = run.call_args.args[0]
-    assert cmd[1] == "https://www.youtube.com/watch?v=abc12345678"
+    assert cmd[-1] == "https://www.youtube.com/watch?v=abc12345678"
+    assert cmd[-2] == "--"
 
 
 def test_run_yt_dlp_json_rejects_invalid_id():
@@ -49,3 +51,20 @@ def test_safe_frontend_path_allows_existing_file(tmp_path, monkeypatch):
 
     resolved = _safe_frontend_path("logo.svg")
     assert resolved == asset.resolve()
+
+
+@pytest.mark.parametrize(
+    "relative",
+    [
+        "../etc/passwd",
+        "../../backend/app/config.py",
+        "/etc/passwd",
+        "assets/../../etc/passwd",
+        "bad segment/file.txt",
+        "file;.txt",
+    ],
+)
+def test_resolve_under_base_blocks_traversal(tmp_path, relative: str):
+    base = tmp_path / "dist"
+    base.mkdir()
+    assert resolve_under_base(base, relative) is None
