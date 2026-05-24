@@ -17,6 +17,13 @@ import {
 import { api } from "@/api"
 import { errorToMessage } from "@/lib/errors"
 import { loadProjectDefaults } from "@/lib/projectDefaults"
+import {
+  applyTemplate,
+  buildTemplateValues,
+  listTemplates,
+  saveTemplate,
+} from "@/lib/project-templates"
+import { DEFAULT_OVERLAY_CONFIG } from "@/lib/overlay-config"
 import { OverlaySettings } from "@/components/overlay-settings"
 import type { OverlayConfig } from "@/types"
 import { PageHeader } from "@/components/page-header"
@@ -37,6 +44,12 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group"
 import { Separator } from "@/components/ui/separator"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import { NAV } from "@/lib/nav"
 
@@ -75,6 +88,41 @@ export default function ProjectSetup() {
   const [touchedAnimes, setTouchedAnimes] = useState(false)
   const [triedSubmit, setTriedSubmit] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
+  const [templates, setTemplates] = useState(listTemplates)
+
+  const refreshTemplates = () => setTemplates(listTemplates())
+
+  const applySelectedTemplate = (templateId: string) => {
+    const values = applyTemplate(templateId, initialDefaults)
+    setSongTypes(values.songTypes)
+    setSongsCount(values.songsCount)
+    setClipTime(values.clipTime)
+    setClipCustom(!(CLIP_PRESETS as readonly number[]).includes(values.clipTime))
+    setEncoder(values.encoder)
+    setSourceMode(values.sourceMode ?? initialDefaults.sourceMode)
+    setAudioNorm(values.audioNormalize)
+    setOverlayConfig(values.overlayConfig ?? DEFAULT_OVERLAY_CONFIG)
+    toast.success("Template applied")
+  }
+
+  const saveCurrentAsTemplate = () => {
+    const name = window.prompt("Name this template")
+    if (!name?.trim()) return
+    saveTemplate({
+      name: name.trim(),
+      values: buildTemplateValues({
+        songsCount,
+        songTypes,
+        clipTime,
+        encoder,
+        audioNormalize: audioNorm,
+        sourceMode,
+        overlayConfig,
+      }),
+    })
+    refreshTemplates()
+    toast.success("Template saved")
+  }
 
   const titleError = !title.trim() && (touchedTitle || triedSubmit)
   const animeError = animes.length === 0 && (touchedAnimes || triedSubmit)
@@ -194,6 +242,36 @@ export default function ProjectSetup() {
         title={NAV.newCompilation}
         description="Set up your anime MV compilation in a few steps. Name it, pick shows, choose song types, and go."
       />
+
+      <div className="flex flex-wrap items-center gap-2">
+        {templates.length > 0 ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="outline" size="sm">
+                Start from template
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="max-w-xs">
+              {templates.map((template) => (
+                <DropdownMenuItem
+                  key={template.id}
+                  onClick={() => applySelectedTemplate(template.id)}
+                >
+                  {template.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={saveCurrentAsTemplate}
+        >
+          Save current as template…
+        </Button>
+      </div>
 
       <form
         action={submit}

@@ -23,6 +23,10 @@ import {
   loadProjectDefaults,
   saveProjectDefaults,
 } from "@/lib/projectDefaults"
+import {
+  deleteTemplate,
+  listTemplates,
+} from "@/lib/project-templates"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import {
@@ -64,6 +68,9 @@ export default function SettingsPage() {
   const [clipCustom, setClipCustom] = useState(
     !(CLIP_PRESETS as readonly number[]).includes(loadProjectDefaults().clipTime)
   )
+  const [templates, setTemplates] = useState(listTemplates)
+
+  const refreshTemplates = () => setTemplates(listTemplates())
 
   useEffect(() => {
     let cancelled = false
@@ -524,6 +531,58 @@ export default function SettingsPage() {
               Reset defaults
             </Button>
           </div>
+        </section>
+
+        <Separator />
+
+        {/* ── Saved templates ─────────────────────────────── */}
+        <section className="flex flex-col gap-6">
+          <div className="flex items-baseline gap-3">
+            <span className="inline-flex size-7 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
+              3
+            </span>
+            <h2 className="font-heading text-lg font-semibold tracking-tight">
+              Saved templates
+            </h2>
+          </div>
+
+          <p className="text-sm leading-relaxed text-muted-foreground -mt-2 ml-10">
+            Named setups from the new compilation page. Stored in this browser only.
+          </p>
+
+          {templates.length === 0 ? (
+            <p className="ml-10 text-sm text-muted-foreground">
+              No templates yet. Save one from the new compilation page.
+            </p>
+          ) : (
+            <ul className="ml-10 flex flex-col gap-2">
+              {templates.map((template) => (
+                <li
+                  key={template.id}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-card/40 px-4 py-3"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{template.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {template.values.songsCount} songs · {template.values.clipTime}s clips
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      deleteTemplate(template.id)
+                      refreshTemplates()
+                      toast.info("Template removed")
+                    }}
+                  >
+                    Delete
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       </div>
     </div>
