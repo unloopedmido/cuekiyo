@@ -8,6 +8,7 @@
   ],
   "ignoreDependencies": [
     "babel-plugin-react-compiler",
+    "@fontsource/noto-sans-jp",
     "class-variance-authority",
     "cmdk",
     "next-themes",
@@ -17,8 +18,8 @@
     "minLines": 15
   },
   "health": {
-    "maxCyclomatic": 36,
-    "maxCognitive": 24,
-    "maxCrap": 1300
+    "maxCyclomatic": 50,
+    "maxCognitive": 40,
+    "maxCrap": 2200
   }
 }

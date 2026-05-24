@@ -25,7 +25,7 @@ export const DEFAULT_PROJECT_DEFAULTS: ProjectDefaults = {
 	audioNormalize: true,
 	sourceMode: "auto",
 	overlayConfig: DEFAULT_OVERLAY_CONFIG,
-	unlimitedSongs: false,
+	unlimitedSongs: true,
 };
 
 export function loadProjectDefaults(): ProjectDefaults {

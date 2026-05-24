@@ -23,6 +23,7 @@ import { errorToMessage } from "@/lib/errors"
 import { NAV } from "@/lib/nav"
 import type { Project, ProjectStatus } from "@/types"
 import { PageHeader } from "@/components/page-header"
+import { PipelinePreview } from "@/components/pipeline-preview"
 import { ProjectNavLink } from "@/components/project-nav-link"
 import { ProjectThumbnail } from "@/components/project-thumbnail"
 import { StatusBadge } from "@/components/status-badge"
@@ -246,9 +247,8 @@ export default function Dashboard() {
       nav(`/projects/${copy.id}`)
     } catch (e) {
       toast.error(errorToMessage(e))
-    } finally {
-      setDuplicatingId(null)
     }
+    setDuplicatingId(null)
   }
 
   const handleRenderAgain = async () => {
@@ -261,9 +261,8 @@ export default function Dashboard() {
       load({ showLoading: false })
     } catch (e) {
       toast.error(errorToMessage(e))
-    } finally {
-      setRenderingAgain(false)
     }
+    setRenderingAgain(false)
   }
 
   const filterOptions: { id: ListFilter; label: string; count: number }[] = [
@@ -278,7 +277,12 @@ export default function Dashboard() {
         title={NAV.projects}
         description="Pick up where you left off, or start a new compilation."
         actions={
-          <Button asChild size="lg" className="fcr-glow-primary-md-to-lg">
+          <Button
+            asChild
+            size="lg"
+            className="fcr-glow-primary-md-to-lg"
+            data-tour="new-compilation"
+          >
             <Link to="/projects/new">
               <HugeiconsIcon
                 icon={Add01Icon}
@@ -375,7 +379,7 @@ export default function Dashboard() {
             ))}
           </div>
         ) : projects.length === 0 ? (
-          <Empty className="fcr-glass border border-dashed border-border/80 bg-muted/20 py-16 fcr-animate-scale">
+          <Empty className="fcr-glass border border-dashed border-border/80 bg-muted/20 py-12 fcr-animate-scale">
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <HugeiconsIcon icon={Folder01Icon} strokeWidth={2} />
@@ -386,7 +390,10 @@ export default function Dashboard() {
                 clips and asks you to review at each step.
               </EmptyDescription>
             </EmptyHeader>
-            <EmptyContent>
+            <EmptyContent className="flex flex-col items-center gap-6">
+              <div data-tour="pipeline">
+                <PipelinePreview />
+              </div>
               <Button asChild size="lg">
                 <Link to="/projects/new">Start a compilation</Link>
               </Button>
@@ -427,6 +434,7 @@ export default function Dashboard() {
               return (
                 <li key={p.id}>
                   <article
+                    data-tour={idx === 0 ? "project-card" : undefined}
                     className={cn(
                       "group relative overflow-hidden rounded-xl border transition-[border-color,background-color,box-shadow,transform] duration-200 fcr-animate-up",
                       staggerClass,

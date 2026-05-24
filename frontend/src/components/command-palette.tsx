@@ -4,6 +4,7 @@ import { toast } from "sonner"
 import { api } from "@/api"
 import { errorToMessage } from "@/lib/errors"
 import { setCommandPaletteOpener } from "@/lib/command-palette-bus"
+import { restartTour } from "@/lib/tour-bus"
 import {
   Command,
   CommandDialog,
@@ -62,8 +63,20 @@ export function CommandPalette() {
             <CommandItem onSelect={() => run(() => navigate("/projects/new"))}>
               {NAV.newCompilation}
             </CommandItem>
-            <CommandItem onSelect={() => run(() => navigate("/settings"))}>
+            <CommandItem
+              onSelect={() => run(() => navigate("/settings"))}
+            >
               {NAV.settings}
+            </CommandItem>
+            <CommandItem
+              onSelect={() =>
+                run(() => {
+                  restartTour()
+                  toast.success("Tour restarted")
+                })
+              }
+            >
+              Restart tour
             </CommandItem>
           </CommandGroup>
           {projects.length > 0 && (

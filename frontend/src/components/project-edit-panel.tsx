@@ -1,20 +1,17 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { toast } from "sonner"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowDown01Icon,
   AudioWave02Icon,
-  MinusSignIcon,
   MusicNote01Icon,
   MusicNote02Icon,
-  PlusSignIcon,
   Scissor01Icon,
 } from "@hugeicons/core-free-icons"
 import { api } from "@/api"
 import { errorToMessage } from "@/lib/errors"
-import { mergeOverlayConfig } from "@/lib/overlay-config"
-import type { OverlayConfig, Project } from "@/types"
-import { OverlaySettings } from "@/components/overlay-settings"
+import type { Project } from "@/types"
+import { SongCountSettings } from "@/components/song-count-settings"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { Button } from "@/components/ui/button"
 import {
@@ -24,7 +21,6 @@ import {
 } from "@/components/ui/collapsible"
 import {
   Field,
-  FieldDescription,
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
@@ -46,12 +42,34 @@ function projectFormState(project: Project) {
     encoder: project.encoder,
     sourceMode: project.source_mode,
     audioNorm: project.audio_normalize,
-    overlayConfig: mergeOverlayConfig(project.overlay_config),
+    unlimitedSongs: project.unlimited_songs,
   }
 }
 
 export function ProjectEditPanel({ project, onSaved }: ProjectEditPanelProps) {
   const [open, setOpen] = useState(false)
+
+  return (
+    <Collapsible
+      open={open}
+      onOpenChange={setOpen}
+      className="rounded-xl border border-border/70 bg-card/25 fcr-glass"
+    >
+      <ProjectEditPanelContent
+        key={`${project.id}:${project.updated_at}`}
+        project={project}
+        open={open}
+        onSaved={onSaved}
+      />
+    </Collapsible>
+  )
+}
+
+function ProjectEditPanelContent({
+  project,
+  open,
+  onSaved,
+}: ProjectEditPanelProps & { open: boolean }) {
   const [saving, setSaving] = useState(false)
   const [title, setTitle] = useState(project.title)
   const [songTypes, setSongTypes] = useState<string[]>(project.song_types)
@@ -65,22 +83,7 @@ export function ProjectEditPanel({ project, onSaved }: ProjectEditPanelProps) {
     project.source_mode
   )
   const [audioNorm, setAudioNorm] = useState(project.audio_normalize)
-  const [overlayConfig, setOverlayConfig] = useState<OverlayConfig>(
-    mergeOverlayConfig(project.overlay_config)
-  )
-
-  useEffect(() => {
-    const next = projectFormState(project)
-    setTitle(next.title)
-    setSongTypes(next.songTypes)
-    setSongsCount(next.songsCount)
-    setClipTime(next.clipTime)
-    setClipCustom(!(CLIP_PRESETS as readonly number[]).includes(next.clipTime))
-    setEncoder(next.encoder)
-    setSourceMode(next.sourceMode)
-    setAudioNorm(next.audioNorm)
-    setOverlayConfig(next.overlayConfig)
-  }, [project.id, project.updated_at])
+  const [unlimitedSongs, setUnlimitedSongs] = useState(project.unlimited_songs)
 
   const baseline = projectFormState(project)
   const dirty =
@@ -90,9 +93,9 @@ export function ProjectEditPanel({ project, onSaved }: ProjectEditPanelProps) {
     encoder !== baseline.encoder ||
     sourceMode !== baseline.sourceMode ||
     audioNorm !== baseline.audioNorm ||
+    unlimitedSongs !== baseline.unlimitedSongs ||
     songTypes.length !== baseline.songTypes.length ||
-    songTypes.some((t, i) => t !== baseline.songTypes[i]) ||
-    JSON.stringify(overlayConfig) !== JSON.stringify(baseline.overlayConfig)
+    songTypes.some((t, i) => t !== baseline.songTypes[i])
 
   const toggleSongType = (type: string) => {
     setSongTypes((prev) =>
@@ -119,23 +122,18 @@ export function ProjectEditPanel({ project, onSaved }: ProjectEditPanelProps) {
         encoder,
         audio_normalize: audioNorm,
         source_mode: sourceMode,
-        overlay_config: overlayConfig,
+        unlimited_songs: unlimitedSongs,
       })
       onSaved(updated)
       toast.success("Project settings saved")
     } catch (e) {
       toast.error(errorToMessage(e))
-    } finally {
-      setSaving(false)
     }
+    setSaving(false)
   }
 
   return (
-    <Collapsible
-      open={open}
-      onOpenChange={setOpen}
-      className="rounded-xl border border-border/70 bg-card/25 fcr-glass"
-    >
+    <>
       <CollapsibleTrigger asChild>
         <button
           type="button"
@@ -151,7 +149,7 @@ export function ProjectEditPanel({ project, onSaved }: ProjectEditPanelProps) {
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-semibold">Project settings</span>
             <span className="block truncate text-xs text-muted-foreground">
-              Title, clip length, overlay, and sourcing options
+              Title, clip length, and sourcing options
             </span>
           </span>
           {dirty ? (
@@ -291,39 +289,12 @@ export function ProjectEditPanel({ project, onSaved }: ProjectEditPanelProps) {
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 max-w-xl">
-          <span className="text-sm font-medium">Target songs</span>
-          <div className="flex items-center gap-1">
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="size-10 rounded-lg"
-              disabled={songsCount <= 1}
-              aria-label="Fewer songs"
-              onClick={() => setSongsCount(Math.max(1, songsCount - 1))}
-            >
-              <HugeiconsIcon icon={MinusSignIcon} strokeWidth={2} className="size-4" />
-            </Button>
-            <div className="flex size-14 items-center justify-center rounded-lg border border-border/60 bg-card/30 tabular-nums text-xl font-semibold">
-              {songsCount}
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="size-10 rounded-lg"
-              disabled={songsCount >= 50}
-              aria-label="More songs"
-              onClick={() => setSongsCount(Math.min(50, songsCount + 1))}
-            >
-              <HugeiconsIcon icon={PlusSignIcon} strokeWidth={2} className="size-4" />
-            </Button>
-          </div>
-          <FieldDescription>
-            Total songs to include in this compilation.
-          </FieldDescription>
-        </div>
+        <SongCountSettings
+          unlimited={unlimitedSongs}
+          onUnlimitedChange={setUnlimitedSongs}
+          count={songsCount}
+          onCountChange={setSongsCount}
+        />
 
         <div className="flex flex-col gap-3 max-w-xl">
           <span className="text-sm font-medium">Encoder</span>
@@ -352,8 +323,6 @@ export function ProjectEditPanel({ project, onSaved }: ProjectEditPanelProps) {
             ))}
           </div>
         </div>
-
-        <OverlaySettings config={overlayConfig} onChange={setOverlayConfig} />
 
         <button
           type="button"
@@ -408,6 +377,6 @@ export function ProjectEditPanel({ project, onSaved }: ProjectEditPanelProps) {
           ) : null}
         </div>
       </CollapsibleContent>
-    </Collapsible>
+    </>
   )
 }

@@ -7,6 +7,7 @@ type StageId =
   | "candidates"
   | "clip-trim"
   | "processing"
+  | "overlay"
   | "order"
   | "render"
   | "output"
@@ -46,6 +47,7 @@ const USER_GATED_STATUSES = new Set<ProjectStatus>([
   "SONG_SELECTION",
   "AWAITING_CANDIDATES",
   "AWAITING_CLIP_TRIM",
+  "AWAITING_OVERLAY_CONFIG",
   "AWAITING_RENDER_ORDER",
 ])
 
@@ -83,8 +85,14 @@ export const PIPELINE_STAGES: PipelineStage[] = [
   {
     id: "processing",
     label: "Prepare clips",
-    description: "Download, trim, and add overlays",
-    statuses: ["DOWNLOADING", "PROBING_NORMALIZING", "CUTTING", "OVERLAYING"],
+    description: "Download, trim, and normalize each segment",
+    statuses: ["DOWNLOADING", "PROBING_NORMALIZING", "CUTTING"],
+  },
+  {
+    id: "overlay",
+    label: "Customize overlay",
+    description: "Style lower-thirds before export",
+    statuses: ["AWAITING_OVERLAY_CONFIG", "OVERLAYING"],
   },
   {
     id: "order",
@@ -152,6 +160,11 @@ const STATUS_COPY: Record<ProjectStatus, StatusCopy> = {
     description: "Trimming clips to the requested duration.",
     tone: "running",
   },
+  AWAITING_OVERLAY_CONFIG: {
+    label: "Customize overlay",
+    description: "Choose how lower-thirds appear on each clip before export.",
+    tone: "attention",
+  },
   OVERLAYING: {
     label: "Adding overlays",
     description: "Applying title and song overlays.",
@@ -200,6 +213,7 @@ export function getProjectAction(status: ProjectStatus): string {
   if (status === "SONG_SELECTION") return "Review songs"
   if (status === "AWAITING_CANDIDATES") return "Review candidates"
   if (status === "AWAITING_CLIP_TRIM") return "Trim clips"
+  if (status === "AWAITING_OVERLAY_CONFIG") return "Customize overlay"
   if (status === "AWAITING_RENDER_ORDER") return "Arrange order"
   if (status === "COMPLETED") return "Open output"
   if (status === "FAILED") return "Review issue"

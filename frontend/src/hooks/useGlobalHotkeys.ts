@@ -2,11 +2,10 @@ import { useEffect } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { useShortcutsRegistry } from "@/hooks/useKeyboardShortcuts"
 import { openCommandPalette } from "@/lib/command-palette-bus"
+import { restartTour } from "@/lib/tour-bus"
 import { viewTransitionNavigate } from "@/lib/view-transitions"
-import { CommandPalette } from "@/components/command-palette"
-import { KeyboardShortcutsHelp } from "@/components/keyboard-shortcuts-help"
 
-export function GlobalHotkeys({ children }: { children: React.ReactNode }) {
+export function useGlobalHotkeys() {
   const navigate = useNavigate()
   const location = useLocation()
   const { register } = useShortcutsRegistry()
@@ -60,15 +59,12 @@ export function GlobalHotkeys({ children }: { children: React.ReactNode }) {
           if (m) navigate(`/projects/${m[1]}`)
         },
       },
+      {
+        key: "t",
+        description: "Restart tour",
+        handler: () => restartTour(),
+      },
     ]
     return register(defs as Parameters<typeof register>[0])
   }, [register, navigate, mod, location.pathname])
-
-  return (
-    <>
-      {children}
-      <CommandPalette />
-      <KeyboardShortcutsHelp />
-    </>
-  )
 }

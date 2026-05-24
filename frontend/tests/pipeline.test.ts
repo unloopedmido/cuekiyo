@@ -19,6 +19,7 @@ test("maps every project status into the persistent pipeline spine", () => {
       "candidates",
       "clip-trim",
       "processing",
+      "overlay",
       "order",
       "render",
       "output",
@@ -30,6 +31,8 @@ test("maps every project status into the persistent pipeline spine", () => {
   assert.equal(getProjectStage("AWAITING_CANDIDATES").id, "candidates");
   assert.equal(getProjectStage("AWAITING_CLIP_TRIM").id, "clip-trim");
   assert.equal(getProjectStage("DOWNLOADING").id, "processing");
+  assert.equal(getProjectStage("AWAITING_OVERLAY_CONFIG").id, "overlay");
+  assert.equal(getProjectStage("OVERLAYING").id, "overlay");
   assert.equal(getProjectStage("AWAITING_RENDER_ORDER").id, "order");
   assert.equal(getProjectStage("COMPLETED").id, "output");
 });
@@ -39,8 +42,10 @@ test("describes statuses with creator-facing copy and next actions", () => {
   assert.equal(getStatusCopy("PROBING_NORMALIZING").label, "Preparing clips");
   assert.equal(getStatusCopy("AWAITING_CANDIDATES").tone, "attention");
   assert.equal(getStatusCopy("AWAITING_CLIP_TRIM").label, "Trim clips");
+  assert.equal(getStatusCopy("AWAITING_OVERLAY_CONFIG").label, "Customize overlay");
   assert.equal(getProjectAction("SONG_SELECTION"), "Review songs");
   assert.equal(getProjectAction("AWAITING_CLIP_TRIM"), "Trim clips");
+  assert.equal(getProjectAction("AWAITING_OVERLAY_CONFIG"), "Customize overlay");
   assert.equal(getProjectAction("FAILED"), "Review issue");
 });
 
@@ -48,6 +53,7 @@ test("identifies only taste checkpoints as user gated", () => {
   assert.equal(isUserGatedStatus("SONG_SELECTION"), true);
   assert.equal(isUserGatedStatus("AWAITING_CANDIDATES"), true);
   assert.equal(isUserGatedStatus("AWAITING_CLIP_TRIM"), true);
+  assert.equal(isUserGatedStatus("AWAITING_OVERLAY_CONFIG"), true);
   assert.equal(isUserGatedStatus("AWAITING_RENDER_ORDER"), true);
   assert.equal(isUserGatedStatus("RENDERING"), false);
 });

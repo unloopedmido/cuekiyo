@@ -30,11 +30,12 @@ export function CandidateSelection({
   const [songs, setSongs] = useState<Song[]>([])
   const [candidates, setCandidates] = useState<Record<string, Candidate[]>>({})
   const [activeSongId, setActiveSongId] = useState<string | null>(null)
-  const [query, setQuery] = useState("")
+  const [queries, setQueries] = useState<Record<string, string>>({})
   const [selecting, setSelecting] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const deferredQuery = useDeferredValue(query)
+  const activeQuery = queries[activeSongId ?? ""] ?? ""
+  const deferredQuery = useDeferredValue(activeQuery)
 
   useEffect(() => {
     let cancelled = false
@@ -163,6 +164,8 @@ export function CandidateSelection({
             filtered[0] ??
             null
 
+          const songQuery = queries[song.id] ?? ""
+
           return (
             <TabsContent
               key={song.id}
@@ -181,10 +184,31 @@ export function CandidateSelection({
                     <HugeiconsIcon icon={Search01Icon} strokeWidth={2} />
                   </InputGroupAddon>
                   <InputGroupInput
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
+                    value={songQuery}
+                    onChange={(e) =>
+                      setQueries((prev) => ({
+                        ...prev,
+                        [song.id]: e.target.value,
+                      }))
+                    }
                     placeholder="Filter candidates"
                   />
+                  {songQuery && (
+                    <InputGroupAddon align="inline-end">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setQueries((prev) => ({
+                            ...prev,
+                            [song.id]: "",
+                          }))
+                        }
+                        className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        Clear
+                      </button>
+                    </InputGroupAddon>
+                  )}
                 </InputGroup>
               </div>
 
@@ -227,7 +251,7 @@ export function CandidateSelection({
                               </div>
                             )}
                             {isSelected && (
-                              <span aria-label="Selected" className="absolute top-2 right-2 flex size-6 items-center justify-center rounded-full bg-black/60 backdrop-blur-sm shadow-[0_0_8px_oklch(from_var(--primary)_l_c_h_/0.25)]">
+                              <span aria-label="Selected" className="absolute top-2 right-2 flex size-6 items-center justify-center rounded-full bg-background/70 backdrop-blur-sm shadow-[0_0_8px_oklch(from_var(--primary)_l_c_h_/0.25)]">
                                 <HugeiconsIcon icon={Tick02Icon} strokeWidth={2.5} className="size-3.5 text-primary" />
                               </span>
                             )}

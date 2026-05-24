@@ -10,7 +10,7 @@ import "./index.css";
 createRoot(document.getElementById("root")!).render(
 	<StrictMode>
 		<BrowserRouter>
-			<ThemeProvider defaultTheme="dark" storageKey="mv-pipeline-theme">
+			<ThemeProvider defaultTheme="dark" storageKey="cuekiyo-theme">
 				<TooltipProvider>
 					<App />
 					<Toaster richColors closeButton />

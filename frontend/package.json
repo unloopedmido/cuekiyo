@@ -1,5 +1,5 @@
 {
-  "name": "video-pipeline-frontend",
+  "name": "cuekiyo-frontend",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -27,6 +27,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@fontsource-variable/manrope": "^5.2.8",
     "@fontsource-variable/outfit": "^5.2.8",
+    "@fontsource/noto-sans-jp": "^5.2.8",
     "@hugeicons/core-free-icons": "^4.1.4",
     "@hugeicons/react": "^1.1.6",
     "@resvg/resvg-js": "^2.6.2",

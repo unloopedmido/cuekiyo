@@ -2,13 +2,14 @@ import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
+  ArchiveArrowDownIcon,
   ClipboardCopyIcon,
   Download01Icon,
   Film01Icon,
   FolderOpenIcon,
+  MoreHorizontalIcon,
   RefreshIcon,
   ViewIcon,
-  ArchiveArrowDownIcon,
 } from "@hugeicons/core-free-icons"
 import { api } from "@/api"
 import { errorToMessage } from "@/lib/errors"
@@ -27,7 +28,6 @@ import {
 } from "@/components/ui/alert-dialog"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { Skeleton } from "@/components/ui/skeleton"
-import { cn } from "@/lib/utils"
 
 export function CompletedOutput({
   projectId,
@@ -81,9 +81,8 @@ export function CompletedOutput({
       onRenderStarted?.()
     } catch (e) {
       toast.error(errorToMessage(e))
-    } finally {
-      setRendering(false)
     }
+    setRendering(false)
   }
 
   const startReapplyOverlay = async () => {
@@ -95,9 +94,8 @@ export function CompletedOutput({
       onRenderStarted?.()
     } catch (e) {
       toast.error(errorToMessage(e))
-    } finally {
-      setReapplyingOverlay(false)
     }
+    setReapplyingOverlay(false)
   }
 
   if (!out && !error) {
@@ -119,13 +117,37 @@ export function CompletedOutput({
       {out?.exists ? (
         <>
           {/* ── Video hero ──────────────────────────────────────── */}
-          <div className="relative overflow-hidden rounded-xl bg-black/80 shadow-lg">
-            <video
-              className="aspect-video w-full"
-              controls
-              aria-label="Final output preview"
-              src={`/api/projects/${projectId}/output/download`}
-            />
+          <div className="relative overflow-hidden rounded-xl border border-border/40 shadow-lg">
+            <div className="relative aspect-video w-full bg-background/60">
+              <video
+                className="size-full"
+                controls
+                aria-label="Final output preview"
+                src={`/api/projects/${projectId}/output/download`}
+              />
+            </div>
+          </div>
+
+          {/* ── Primary CTA ─────────────────────────────────────── */}
+          <div className="flex flex-col items-center gap-4 text-center">
+            <Button
+              asChild
+              size="lg"
+              className="h-14 gap-2 px-8 text-base fcr-glow-primary-md-to-lg"
+            >
+              <a
+                href={`/api/projects/${projectId}/output/download`}
+                download
+                target="_blank"
+                rel="noreferrer"
+              >
+                <HugeiconsIcon icon={Download01Icon} strokeWidth={2} className="size-5" />
+                Open output
+              </a>
+            </Button>
+            {filename && (
+              <p className="text-xs text-muted-foreground">{filename}</p>
+            )}
           </div>
 
           {/* ── Anime source strip ──────────────────────────────── */}
@@ -174,71 +196,68 @@ export function CompletedOutput({
             )}
           </div>
 
-          {/* ── Actions ─────────────────────────────────────────── */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <Button asChild size="lg" className="gap-2">
-              <a
-                href={`/api/projects/${projectId}/output/download`}
-                download
-                target="_blank"
-                rel="noreferrer"
-              >
-                <HugeiconsIcon icon={Download01Icon} strokeWidth={2} className="size-4" />
-                Open output
-              </a>
-            </Button>
-            <Button asChild variant="outline" size="lg" className="gap-2">
+          {/* ── Utility actions ─────────────────────────────────── */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button asChild variant="outline" size="sm" className="gap-1.5">
               <a
                 href={api.allClipsZipUrl(projectId, "overlay")}
                 download
                 target="_blank"
                 rel="noreferrer"
               >
-                <HugeiconsIcon icon={ArchiveArrowDownIcon} strokeWidth={2} data-icon="inline-start" className="size-4" />
-                Download all clips (ZIP)
+                <HugeiconsIcon icon={ArchiveArrowDownIcon} strokeWidth={2} className="size-3.5" />
+                Download all clips
               </a>
             </Button>
             <Button
-              variant="outline"
-              size="lg"
-              className="gap-2"
+              variant="ghost"
+              size="sm"
+              className="gap-1.5"
               onClick={() =>
                 api
                   .openOutputFolder(projectId)
                   .catch((e) => toast.error(errorToMessage(e)))
               }
             >
-              <HugeiconsIcon icon={FolderOpenIcon} strokeWidth={2} className="size-4" />
+              <HugeiconsIcon icon={FolderOpenIcon} strokeWidth={2} className="size-3.5" />
               Reveal in folder
             </Button>
             {filePath && (
               <Button
                 variant="ghost"
-                size="lg"
-                className="gap-2"
+                size="sm"
+                className="gap-1.5"
                 onClick={() => void copyPath()}
               >
-                <HugeiconsIcon icon={ClipboardCopyIcon} strokeWidth={2} className="size-4" />
-                Copy file path
+                <HugeiconsIcon icon={ClipboardCopyIcon} strokeWidth={2} className="size-3.5" />
+                Copy path
               </Button>
             )}
-            <div className="flex flex-col gap-2 sm:ml-auto sm:flex-row">
+          </div>
+
+          {/* ── Re-export section ───────────────────────────────── */}
+          <div className="flex flex-col gap-3 rounded-xl border border-border/40 bg-muted/10 p-4">
+            <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <HugeiconsIcon icon={MoreHorizontalIcon} strokeWidth={2} className="size-3.5" />
+              Re-export
+            </div>
+            <div className="flex flex-wrap gap-2">
               <Button
                 variant="outline"
-                size="lg"
-                className="gap-2"
+                size="sm"
+                className="gap-1.5"
                 onClick={() => setOverlayConfirmOpen(true)}
               >
-                <HugeiconsIcon icon={ViewIcon} strokeWidth={2} className="size-4" />
+                <HugeiconsIcon icon={ViewIcon} strokeWidth={2} className="size-3.5" />
                 Re-apply overlay
               </Button>
               <Button
                 variant="outline"
-                size="lg"
-                className="gap-2"
+                size="sm"
+                className="gap-1.5"
                 onClick={() => setConfirmOpen(true)}
               >
-                <HugeiconsIcon icon={RefreshIcon} strokeWidth={2} className="size-4" />
+                <HugeiconsIcon icon={RefreshIcon} strokeWidth={2} className="size-3.5" />
                 Render again
               </Button>
             </div>

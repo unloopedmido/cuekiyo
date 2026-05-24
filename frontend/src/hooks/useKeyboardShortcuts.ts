@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from "react"
 
-export type ShortcutHandler = (event: KeyboardEvent) => void
+type ShortcutHandler = (event: KeyboardEvent) => void
 
 export interface ShortcutDef {
   key: string

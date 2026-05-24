@@ -9,7 +9,7 @@ export type ProjectNavState = {
 
 export type NavDirection = "forward" | "back"
 
-export function supportsViewTransitions(): boolean {
+function supportsViewTransitions(): boolean {
   return typeof document.startViewTransition === "function"
 }
 

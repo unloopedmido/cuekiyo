@@ -7,36 +7,32 @@ import {
   AudioWave02Icon,
   Cancel01Icon,
   CheckmarkCircle02Icon,
-  MinusSignIcon,
   MusicNote01Icon,
   MusicNote02Icon,
-  PlusSignIcon,
   Scissor01Icon,
   Search01Icon,
 } from "@hugeicons/core-free-icons"
 import { api } from "@/api"
 import { errorToMessage } from "@/lib/errors"
 import { loadProjectDefaults } from "@/lib/projectDefaults"
+import { DEFAULT_OVERLAY_CONFIG } from "@/lib/overlay-config"
 import {
   applyTemplate,
   buildTemplateValues,
   listTemplates,
   saveTemplate,
 } from "@/lib/project-templates"
-import { DEFAULT_OVERLAY_CONFIG } from "@/lib/overlay-config"
-import { OverlaySettings } from "@/components/overlay-settings"
 import { AnimeBulkImport } from "@/components/anime-bulk-import"
-import type { OverlayConfig } from "@/types"
+import { SelectedAnimeList } from "@/components/selected-anime-list"
+import { SongCountSettings } from "@/components/song-count-settings"
+import { animeDisplayTitle, type AnimePick } from "@/lib/anime-pick"
 import { PageHeader } from "@/components/page-header"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
   Field,
   FieldDescription,
-  FieldGroup,
-  FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import {
@@ -54,14 +50,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import { NAV } from "@/lib/nav"
-
-type AnimePick = {
-  mal_id: number
-  title: string
-  title_english?: string
-  image_url?: string
-  year?: number
-}
 
 const CLIP_PRESETS = [5, 10, 15, 20, 30] as const
 
@@ -84,9 +72,6 @@ export default function ProjectSetup() {
     initialDefaults.sourceMode
   )
   const [audioNorm, setAudioNorm] = useState(initialDefaults.audioNormalize)
-  const [overlayConfig, setOverlayConfig] = useState<OverlayConfig>(
-    initialDefaults.overlayConfig
-  )
   const [searching, setSearching] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [touchedTitle, setTouchedTitle] = useState(false)
@@ -106,7 +91,6 @@ export default function ProjectSetup() {
     setEncoder(values.encoder)
     setSourceMode(values.sourceMode ?? initialDefaults.sourceMode)
     setAudioNorm(values.audioNormalize)
-    setOverlayConfig(values.overlayConfig ?? DEFAULT_OVERLAY_CONFIG)
     setUnlimitedSongs(values.unlimitedSongs ?? initialDefaults.unlimitedSongs)
     toast.success("Template applied")
   }
@@ -123,7 +107,7 @@ export default function ProjectSetup() {
         encoder,
         audioNormalize: audioNorm,
         sourceMode,
-        overlayConfig,
+        overlayConfig: initialDefaults.overlayConfig,
         unlimitedSongs,
       }),
     })
@@ -141,8 +125,6 @@ export default function ProjectSetup() {
   ]
     .filter(Boolean)
     .join(" ")
-
-  const clipIsPreset = (CLIP_PRESETS as readonly number[]).includes(clipTime)
 
   useEffect(() => {
     const q = query.trim()
@@ -243,7 +225,7 @@ export default function ProjectSetup() {
           encoder,
           audio_normalize: audioNorm,
           source_mode: sourceMode,
-          overlay_config: overlayConfig,
+          overlay_config: DEFAULT_OVERLAY_CONFIG,
           unlimited_songs: unlimitedSongs,
         })
         await api.loadThemes(project.id)
@@ -380,7 +362,8 @@ export default function ProjectSetup() {
               </InputGroupAddon>
             </InputGroup>
             <FieldDescription id="anime-hint">
-              Results appear as you type. Click to add, click again to remove.
+              Search to add shows. Your selection stays listed below, even when
+              results change.
             </FieldDescription>
             {hasSearched && results.length === 0 && (
               <FieldDescription id="anime-no-results">
@@ -398,16 +381,21 @@ export default function ProjectSetup() {
             />
           </Field>
 
-          {/* Search results grid */}
-          {results.length > 0 && (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+          <SelectedAnimeList animes={animes} onRemove={removeAnime} />
+
+          {results.length > 0 ? (
+            <div className="flex flex-col gap-3">
+              <p className="text-xs font-medium text-muted-foreground">
+                Search results
+              </p>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
               {results.slice(0, 5).map((result) => {
                 const isAdded = animes.some((a) => a.mal_id === result.mal_id)
                 return (
                   <button
                     key={result.mal_id}
                     type="button"
-                    aria-label={isAdded ? `Remove ${result.title_english || result.title}` : `Add ${result.title_english || result.title}`}
+                    aria-label={isAdded ? `Remove ${animeDisplayTitle(result)}` : `Add ${animeDisplayTitle(result)}`}
                     onClick={() => isAdded ? removeAnime(result.mal_id) : addAnime(result)}
                     className={cn(
                       "group/result relative flex flex-col overflow-hidden rounded-xl border transition-all duration-200",
@@ -453,7 +441,7 @@ export default function ProjectSetup() {
                           <span className="inline-flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md">
                             <HugeiconsIcon icon={CheckmarkCircle02Icon} strokeWidth={2} className="size-4" />
                           </span>
-                          <span className="inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white opacity-0 backdrop-blur-sm transition-opacity group-hover/result:opacity-100">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-background/70 px-2 py-0.5 text-[10px] font-semibold text-foreground opacity-0 backdrop-blur-sm transition-opacity group-hover/result:opacity-100">
                             <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} className="size-3" />
                             Remove
                           </span>
@@ -461,7 +449,7 @@ export default function ProjectSetup() {
                       )}
                       <div className="absolute inset-x-0 bottom-0 p-2.5">
                         <p className="truncate text-xs font-semibold text-white leading-tight drop-shadow-sm">
-                          {result.title_english || result.title}
+                          {animeDisplayTitle(result)}
                         </p>
                         {result.year && (
                           <p className="mt-0.5 text-[10px] text-white/70 tabular-nums">
@@ -473,8 +461,9 @@ export default function ProjectSetup() {
                   </button>
                 )
               })}
+              </div>
             </div>
-          )}
+          ) : null}
         </section>
 
         <Separator />
@@ -696,65 +685,13 @@ export default function ProjectSetup() {
               </div>
             </div>
 
-            {/* Songs count — stepper or no limit */}
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-2">
-                <HugeiconsIcon icon={MusicNote01Icon} strokeWidth={1.5} className="size-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Target songs</span>
-              </div>
-              <Field className="flex flex-row items-start gap-3 rounded-lg border border-border/60 bg-card/30 p-3">
-                <Checkbox
-                  id="unlimited-songs"
-                  checked={unlimitedSongs}
-                  onCheckedChange={(checked) =>
-                    setUnlimitedSongs(checked === true)
-                  }
-                />
-                <div className="flex flex-col gap-1">
-                  <FieldLabel htmlFor="unlimited-songs" className="font-medium">
-                    No song limit
-                  </FieldLabel>
-                  <FieldDescription>
-                    Pick as many themes as you want. The song count stepper is
-                    hidden during selection.
-                  </FieldDescription>
-                </div>
-              </Field>
-              {!unlimitedSongs ? (
-                <>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="size-10 rounded-lg"
-                      disabled={songsCount <= 1}
-                      aria-label="Fewer songs"
-                      onClick={() => setSongsCount(Math.max(1, songsCount - 1))}
-                    >
-                      <HugeiconsIcon icon={MinusSignIcon} strokeWidth={2} className="size-4" />
-                    </Button>
-                    <div className="flex size-14 items-center justify-center rounded-lg border border-border/60 bg-card/30 tabular-nums text-xl font-semibold">
-                      {songsCount}
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="size-10 rounded-lg"
-                      disabled={songsCount >= 50}
-                      aria-label="More songs"
-                      onClick={() => setSongsCount(Math.min(50, songsCount + 1))}
-                    >
-                      <HugeiconsIcon icon={PlusSignIcon} strokeWidth={2} className="size-4" />
-                    </Button>
-                  </div>
-                  <FieldDescription>
-                    Total number of songs to include in this compilation.
-                  </FieldDescription>
-                </>
-              ) : null}
-            </div>
+            {/* Song count */}
+            <SongCountSettings
+              unlimited={unlimitedSongs}
+              onUnlimitedChange={setUnlimitedSongs}
+              count={songsCount}
+              onCountChange={setSongsCount}
+            />
 
             {/* Encoder — card grid */}
             <div className="flex flex-col gap-3">
@@ -786,10 +723,6 @@ export default function ProjectSetup() {
               </div>
             </div>
 
-            <OverlaySettings
-              config={overlayConfig}
-              onChange={setOverlayConfig}
-            />
 
             {/* Audio normalize — card toggle */}
             <button

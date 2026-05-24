@@ -8,6 +8,7 @@ export type ProjectStatus =
   | "DOWNLOADING"
   | "PROBING_NORMALIZING"
   | "CUTTING"
+  | "AWAITING_OVERLAY_CONFIG"
   | "OVERLAYING"
   | "AWAITING_RENDER_ORDER"
   | "RENDERING"
@@ -22,6 +23,11 @@ export interface OverlayConfig {
   show_anime_name: boolean;
   show_song_line: boolean;
   show_meta_line: boolean;
+  accent_color: string;
+  title_color: string;
+  subtitle_color: string;
+  meta_color: string;
+  font_scale: "compact" | "default" | "large";
 }
 
 export interface Project {

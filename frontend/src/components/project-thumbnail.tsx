@@ -97,7 +97,7 @@ export function ProjectThumbnail({ animes, className }: ProjectThumbnailProps) {
         <div key={src} className="relative size-full">
           <CoverImage src={src} />
           {extra > 0 && index === visible.length - 1 && (
-            <span className="absolute inset-0 flex items-center justify-center bg-black/55 text-xs font-semibold text-white tabular-nums">
+            <span className="absolute inset-0 flex items-center justify-center bg-background/70 text-xs font-semibold text-foreground tabular-nums">
               +{extra}
             </span>
           )}

@@ -1,7 +1,5 @@
-import { youtubeEmbedUrl } from "@/lib/youtube-embed";
 import { parseYoutubeId } from "@/lib/youtube-url";
-
-export { youtubeEmbedUrl } from "@/lib/youtube-embed";
+import { youtubeEmbedUrl } from "@/lib/youtube-embed";
 
 export function YoutubePreview({
 	youtubeId,

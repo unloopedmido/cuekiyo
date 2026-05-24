@@ -7,7 +7,7 @@ import type {
 	ThemeSong,
 } from "./types";
 
-export type OverlayPreviewPayload = {
+type OverlayPreviewPayload = {
 	width?: number;
 	height?: number;
 	anime_name?: string;
@@ -76,6 +76,10 @@ export const api = {
 		}),
 	confirmClipTrim: (projectId: string) =>
 		request<{ jobId: string }>(`/projects/${projectId}/clip-trim/confirm`, {
+			method: "POST",
+		}),
+	confirmOverlayConfig: (projectId: string) =>
+		request<{ jobId: string }>(`/projects/${projectId}/overlay-config/confirm`, {
 			method: "POST",
 		}),
 	submitManualSource: (projectId: string, songId: string, url: string) =>

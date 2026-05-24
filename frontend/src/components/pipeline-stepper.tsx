@@ -1,6 +1,5 @@
 import {
 	PIPELINE_STAGES,
-	getProjectStage,
 	getStageIndex,
 	getStatusCopy,
 } from "@/pipeline";
@@ -8,12 +7,6 @@ import type { ProjectStatus } from "@/types";
 import { cn } from "@/lib/utils";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { CheckmarkCircle01Icon } from "@hugeicons/core-free-icons";
-
-const TERMINAL_STATUSES = new Set<ProjectStatus>([
-	"COMPLETED",
-	"FAILED",
-	"CANCELLED",
-]);
 
 function CompletedTimeline() {
 	return (

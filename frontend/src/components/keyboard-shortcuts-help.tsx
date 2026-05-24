@@ -43,6 +43,7 @@ const shortcuts = () => {
 			description: "Current compilation",
 		},
 		{ key: "?", description: "Show keyboard shortcuts" },
+		{ key: "t", description: "Restart tour" },
 	];
 };
 

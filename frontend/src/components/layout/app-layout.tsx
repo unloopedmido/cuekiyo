@@ -21,8 +21,15 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
-import { GlobalHotkeys } from "@/components/global-hotkeys"
+import { CommandPalette } from "@/components/command-palette"
+import { KeyboardShortcutsHelp } from "@/components/keyboard-shortcuts-help"
+import { LegalNoticeGate } from "@/components/legal-notice-gate"
+import { RunningJobsIndicator } from "@/components/running-jobs-indicator"
+import { TourGuide } from "@/components/tour-guide"
+import { TourProvider } from "@/context/tour"
 import { PageMetaProvider, usePageMetaContext } from "@/context/page-meta"
+import { useGlobalHotkeys } from "@/hooks/useGlobalHotkeys"
+import { BRAND } from "@/lib/brand"
 import { NAV } from "@/lib/nav"
 import { viewTransitionNavigate } from "@/lib/view-transitions"
 import { persistentVt } from "@/lib/view-transitions"
@@ -32,15 +39,15 @@ function useDocumentTitle() {
   const { meta } = usePageMetaContext()
 
   useEffect(() => {
-    let title = "MV Pipeline"
+    let title: string = BRAND.name
     if (meta.documentTitle) {
-      title = `${meta.documentTitle} \u2013 MV Pipeline`
+      title = `${meta.documentTitle} \u2013 ${BRAND.name}`
     } else if (pathname === "/") {
-      title = `${NAV.projects} \u2013 MV Pipeline`
+      title = `${NAV.projects} \u2013 ${BRAND.name}`
     } else if (pathname === "/projects/new") {
-      title = `${NAV.newCompilation} \u2013 MV Pipeline`
+      title = `${NAV.newCompilation} \u2013 ${BRAND.name}`
     } else if (pathname === "/settings") {
-      title = `${NAV.settings} \u2013 MV Pipeline`
+      title = `${NAV.settings} \u2013 ${BRAND.name}`
     }
     document.title = title
   }, [pathname, meta.documentTitle])
@@ -180,38 +187,43 @@ const sidebarVtStyle: CSSProperties = {
 
 function AppLayoutInner() {
   useDocumentTitle()
+  useGlobalHotkeys()
   return (
     <SidebarProvider
       style={
         {
           "--sidebar-width": "16rem",
-        } as React.CSSProperties
+        } as CSSProperties
       }
     >
-      <GlobalHotkeys>
-        <SkipLink />
-        <AppSidebar style={sidebarVtStyle} />
-        <SidebarInset>
-          <header
-            className="sticky top-0 z-50 flex h-14 shrink-0 items-center border-b border-border bg-background/95 backdrop-blur-sm px-4"
-            style={headerVtStyle}
-          >
-            <div className="flex items-center gap-3">
-              <SidebarTrigger className="-ml-1 transition-colors hover:bg-sidebar-accent" />
-              <div className="h-4 w-px bg-border" />
-              <Breadcrumbs />
-            </div>
-          </header>
-          <main
-            id="main-content"
-            className="flex flex-1 flex-col px-4 py-6 md:px-8 md:py-8"
-          >
-            <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col">
-              <Outlet />
-            </div>
-          </main>
-        </SidebarInset>
-      </GlobalHotkeys>
+      <SkipLink />
+      <AppSidebar style={sidebarVtStyle} />
+      <SidebarInset>
+        <header
+          className="sticky top-0 z-50 flex h-14 shrink-0 items-center border-b border-border bg-background/95 backdrop-blur-sm px-4"
+          style={headerVtStyle}
+        >
+          <div className="flex flex-1 items-center gap-3">
+            <SidebarTrigger className="-ml-1 transition-colors hover:bg-sidebar-accent" />
+            <div className="h-4 w-px bg-border" />
+            <Breadcrumbs />
+            <RunningJobsIndicator />
+          </div>
+        </header>
+        <main
+          id="main-content"
+          className="flex flex-1 flex-col px-4 py-6 md:px-8 md:py-8"
+        >
+          <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col">
+            <Outlet />
+          </div>
+        </main>
+      </SidebarInset>
+      <TourProvider>
+        <TourGuide />
+      </TourProvider>
+      <CommandPalette />
+      <KeyboardShortcutsHelp />
     </SidebarProvider>
   )
 }
@@ -219,7 +231,9 @@ function AppLayoutInner() {
 export function AppLayout() {
   return (
     <PageMetaProvider>
-      <AppLayoutInner />
+      <LegalNoticeGate>
+        <AppLayoutInner />
+      </LegalNoticeGate>
     </PageMetaProvider>
   )
 }

@@ -13,14 +13,7 @@ import {
 import { FieldDescription } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
 import { LoadingSpinner } from "@/components/loading-spinner";
-
-type AnimePick = {
-	mal_id: number;
-	title: string;
-	title_english?: string;
-	image_url?: string;
-	year?: number;
-};
+import type { AnimePick } from "@/lib/anime-pick";
 
 export function AnimeBulkImport({
 	existingIds,
@@ -66,9 +59,10 @@ export function AnimeBulkImport({
 			setText("");
 		} catch (e) {
 			toast.error(errorToMessage(e));
-		} finally {
 			setImporting(false);
+			return;
 		}
+		setImporting(false);
 	};
 
 	return (

@@ -62,6 +62,7 @@ export function ClipTrimEditor({
 
   useEffect(() => {
     let cancelled = false
+    const timers = debounceTimers.current
     api
       .listSongs(projectId)
       .then(async (loadedSongs) => {
@@ -104,10 +105,10 @@ export function ClipTrimEditor({
 
     return () => {
       cancelled = true
-      for (const timer of debounceTimers.current.values()) {
+      for (const timer of timers.values()) {
         clearTimeout(timer)
       }
-      debounceTimers.current.clear()
+      timers.clear()
     }
   }, [projectId, project.clip_time])
 
@@ -181,7 +182,7 @@ export function ClipTrimEditor({
     })
   }
 
-  const useHeatmap = (song: Song) => {
+  const applyHeatmapStart = (song: Song) => {
     const clipDuration = trimState[song.id]?.clipTime ?? project.clip_time
     persistTrim(
       song.id,
@@ -334,7 +335,7 @@ export function ClipTrimEditor({
                   variant="outline"
                   size="sm"
                   disabled={heatmap || savingSongId === song.id}
-                  onClick={() => useHeatmap(song)}
+                  onClick={() => applyHeatmapStart(song)}
                 >
                   Use heatmap
                 </Button>

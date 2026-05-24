@@ -15,6 +15,7 @@ import {
 import type { ProgressEvent, Project } from "@/types"
 import { CandidateSelection } from "@/components/candidate-selection"
 import { ClipTrimEditor } from "@/components/clip-trim-editor"
+import { OverlayConfigEditor } from "@/components/overlay-config-editor"
 import { ManualSourceSelection } from "@/components/manual-source-selection"
 import { CompletedOutput } from "@/components/completed-output"
 import { CompilationSummary } from "@/components/compilation-summary"
@@ -31,6 +32,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { usePageMeta } from "@/context/page-meta"
+import { cn } from "@/lib/utils"
 import {
   type ProjectNavState,
 } from "@/lib/view-transitions"
@@ -150,13 +152,27 @@ export default function ProjectPage() {
 
         <div className="flex min-w-0 flex-col gap-6">
           {isSettingsEditable(project.status) && (
-            <ProjectEditPanel
-              project={project}
-              onSaved={(updated) => {
-                setProject(updated)
-                setError(null)
-              }}
-            />
+            <div
+              className={cn(
+                "relative rounded-xl border border-border/60 transition-opacity",
+                running && "opacity-60"
+              )}
+            >
+              {running && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/40 backdrop-blur-[1px]">
+                  <p className="rounded-full border border-primary/20 bg-primary/[0.06] px-4 py-2 text-xs font-medium text-primary">
+                    Editing paused while pipeline runs
+                  </p>
+                </div>
+              )}
+              <ProjectEditPanel
+                project={project}
+                onSaved={(updated) => {
+                  setProject(updated)
+                  setError(null)
+                }}
+              />
+            </div>
           )}
 
           {running && (
@@ -192,6 +208,14 @@ export default function ProjectPage() {
           ) : null}
           {project.status === "AWAITING_CLIP_TRIM" && (
             <ClipTrimEditor projectId={id} project={project} onDone={refresh} />
+          )}
+          {project.status === "AWAITING_OVERLAY_CONFIG" && (
+            <OverlayConfigEditor
+              key={project.updated_at}
+              projectId={id}
+              project={project}
+              onDone={refresh}
+            />
           )}
           {project.status === "AWAITING_RENDER_ORDER" && (
             <RenderOrder projectId={id} onDone={refresh} />

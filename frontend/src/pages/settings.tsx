@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -8,10 +8,15 @@ import {
   MusicNote01Icon,
   MusicNote02Icon,
   Scissor01Icon,
-  MinusSignIcon,
-  PlusSignIcon,
 } from "@hugeicons/core-free-icons"
 import { api } from "@/api"
+import { SongCountSettings } from "@/components/song-count-settings"
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs"
 import {
   DEFAULT_APP_SETTINGS,
   loadAppSettingsCache,
@@ -29,9 +34,7 @@ import {
 } from "@/lib/project-templates"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
-import {
-  FieldDescription,
-} from "@/components/ui/field"
+import { FieldDescription } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { NAV } from "@/lib/nav"
@@ -69,6 +72,8 @@ export default function SettingsPage() {
     !(CLIP_PRESETS as readonly number[]).includes(loadProjectDefaults().clipTime)
   )
   const [templates, setTemplates] = useState(listTemplates)
+  const [activeTab, setActiveTab] = useState("defaults")
+  const saveDefaultsTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const refreshTemplates = () => setTemplates(listTemplates())
 
@@ -97,21 +102,25 @@ export default function SettingsPage() {
     }
   }, [])
 
-  const saveDefaults = () => {
-    if (defaults.songTypes.length === 0) {
-      toast.error("Select at least one song type")
-      return
+  /* Auto-save defaults with 500ms debounce */
+  useEffect(() => {
+    if (saveDefaultsTimer.current) clearTimeout(saveDefaultsTimer.current)
+    saveDefaultsTimer.current = setTimeout(() => {
+      if (defaults.songTypes.length > 0) {
+        saveProjectDefaults(defaults)
+      }
+    }, 500)
+    return () => {
+      if (saveDefaultsTimer.current) clearTimeout(saveDefaultsTimer.current)
     }
-    saveProjectDefaults(defaults)
-    toast.success("Defaults saved")
-  }
+  }, [defaults])
 
   const resetDefaults = () => {
     const reset = DEFAULT_PROJECT_DEFAULTS
     setDefaults(reset)
     setClipCustom(false)
     saveProjectDefaults(reset)
-    toast.info("Defaults reset")
+    toast.info("Defaults reset to factory settings")
   }
 
   const saveAppSettings = async () => {
@@ -144,249 +153,96 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-10">
+    <div className="flex flex-1 flex-col gap-8">
       <PageHeader
         title={NAV.settings}
         description="Defaults for new compilations and anime metadata sources."
       />
 
-      <div className="flex flex-col gap-12 max-w-2xl">
-        {/* ── Metadata provider ─────────────────────────────── */}
-        <section className="flex flex-col gap-6">
-          <div className="flex items-baseline gap-3">
-            <span className="inline-flex size-7 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
-              1
-            </span>
-            <h2 className="font-heading text-lg font-semibold tracking-tight">
-              Anime metadata
-            </h2>
-          </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="max-w-2xl">
+        <TabsList className="w-full">
+          <TabsTrigger value="defaults" className="flex-1">Compilation defaults</TabsTrigger>
+          <TabsTrigger value="metadata" className="flex-1">Anime metadata</TabsTrigger>
+          <TabsTrigger value="templates" className="flex-1">Templates</TabsTrigger>
+        </TabsList>
 
-          <p className="text-sm leading-relaxed text-muted-foreground -mt-2 ml-10">
-            Choose which API to use first when searching anime and loading artwork.
-            The other provider kicks in automatically if the primary one fails.
-            Opening and ending themes always come from Jikan.
+        {/* ── Defaults tab ──────────────────────────────────────── */}
+        <TabsContent value="defaults" className="flex flex-col gap-8 mt-6">
+          <p className="text-sm text-muted-foreground">
+            These values prefill when you start a new compilation. Changes save automatically in this browser.
           </p>
 
-          <div className="grid grid-cols-2 gap-4 ml-10">
-            {METADATA_PROVIDERS.map((provider) => {
-              const selected = appSettings.animeMetadataProvider === provider.value
-              return (
-                <button
-                  key={provider.value}
-                  type="button"
-                  onClick={() =>
-                    setAppSettings((cur) => ({
-                      ...cur,
-                      animeMetadataProvider: provider.value,
-                    }))
-                  }
-                  disabled={settingsLoading}
-                  aria-label={`Select ${provider.label}`}
-                  aria-pressed={selected}
-                  className={cn(
-                    "flex flex-col gap-3 rounded-xl border p-5 text-left transition-all duration-200",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                    "disabled:opacity-50 disabled:pointer-events-none",
-                    selected
-                      ? "border-primary/40 bg-primary/[0.06] ring-1 ring-primary/20"
-                      : "border-border/70 bg-card/40 hover:border-primary/35 hover:bg-primary/[0.04] hover:-translate-y-0.5 active:translate-y-0"
-                  )}
-                >
-                  <div className={cn(
-                    "flex size-10 items-center justify-center rounded-lg transition-colors",
-                    selected
-                      ? "bg-primary/20 text-primary"
-                      : "bg-muted/60 text-muted-foreground"
-                  )}>
-                    <HugeiconsIcon icon={provider.icon} strokeWidth={1.5} className="size-5" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold">{provider.label}</p>
-                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                      {provider.desc}
-                    </p>
-                  </div>
-                  <div className={cn(
-                    "mt-1 self-end rounded-full px-2.5 py-0.5 text-[10px] font-semibold transition-colors",
-                    selected
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground"
-                  )}>
-                    {selected ? "Active" : "Select"}
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-
-          <div className="flex gap-2 ml-10">
-            <Button onClick={saveAppSettings} disabled={settingsLoading}>
-              Save metadata
-            </Button>
-            <Button
-              variant="outline"
-              onClick={resetAppSettings}
-              disabled={settingsLoading}
-            >
-              Reset
-            </Button>
-          </div>
-        </section>
-
-        <Separator />
-
-        {/* ── Compilation defaults ─────────────────────────── */}
-        <section className="flex flex-col gap-8">
-          <div className="flex items-baseline gap-3">
-            <span className="inline-flex size-7 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
-              2
-            </span>
-            <h2 className="font-heading text-lg font-semibold tracking-tight">
-              New compilation defaults
-            </h2>
-          </div>
-
-          <p className="text-sm leading-relaxed text-muted-foreground -mt-4 ml-10">
-            These values prefill when you start a new compilation. Saved in this
-            browser.
-          </p>
-
-          <div className="flex flex-col gap-8 ml-10">
-            {/* ── Song types ──────────────────────────── */}
+          <div className="flex flex-col gap-8">
+            {/* Song types */}
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-2">
                 <HugeiconsIcon icon={MusicNote01Icon} strokeWidth={1.5} className="size-4 text-muted-foreground" />
                 <span className="text-sm font-medium">Song types</span>
               </div>
               <div className="grid grid-cols-2 gap-4 max-w-md">
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={defaults.songTypes.includes("opening")}
-                  aria-label="Include openings"
-                  onClick={() => toggleSongType("opening")}
-                  className={cn(
-                    "flex flex-col gap-3 rounded-xl border p-5 text-left transition-all duration-200",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                    defaults.songTypes.includes("opening")
-                      ? "border-primary/40 bg-primary/[0.06] ring-1 ring-primary/20"
-                      : "border-border/70 bg-card/40 hover:border-primary/35 hover:bg-primary/[0.04] hover:-translate-y-0.5 active:translate-y-0"
-                  )}
-                >
-                  <div className={cn(
-                    "flex size-10 items-center justify-center rounded-lg transition-colors",
-                    defaults.songTypes.includes("opening")
-                      ? "bg-primary/20 text-primary"
-                      : "bg-muted/60 text-muted-foreground"
-                  )}>
-                    <HugeiconsIcon icon={MusicNote01Icon} strokeWidth={1.5} className="size-5" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold">Openings</p>
-                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                      High-energy intro themes with iconic visuals.
-                    </p>
-                  </div>
-                  <div className={cn(
-                    "mt-1 self-end rounded-full px-2.5 py-0.5 text-[10px] font-semibold transition-colors",
-                    defaults.songTypes.includes("opening")
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground"
-                  )}>
-                    {defaults.songTypes.includes("opening") ? "On" : "Off"}
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={defaults.songTypes.includes("ending")}
-                  aria-label="Include endings"
-                  onClick={() => toggleSongType("ending")}
-                  className={cn(
-                    "flex flex-col gap-3 rounded-xl border p-5 text-left transition-all duration-200",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                    defaults.songTypes.includes("ending")
-                      ? "border-primary/40 bg-primary/[0.06] ring-1 ring-primary/20"
-                      : "border-border/70 bg-card/40 hover:border-primary/35 hover:bg-primary/[0.04] hover:-translate-y-0.5 active:translate-y-0"
-                  )}
-                >
-                  <div className={cn(
-                    "flex size-10 items-center justify-center rounded-lg transition-colors",
-                    defaults.songTypes.includes("ending")
-                      ? "bg-primary/20 text-primary"
-                      : "bg-muted/60 text-muted-foreground"
-                  )}>
-                    <HugeiconsIcon icon={MusicNote02Icon} strokeWidth={1.5} className="size-5" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold">Endings</p>
-                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                      Calmer ending themes, often with unique art styles.
-                    </p>
-                  </div>
-                  <div className={cn(
-                    "mt-1 self-end rounded-full px-2.5 py-0.5 text-[10px] font-semibold transition-colors",
-                    defaults.songTypes.includes("ending")
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground"
-                  )}>
-                    {defaults.songTypes.includes("ending") ? "On" : "Off"}
-                  </div>
-                </button>
+                {([
+                  { type: "opening", label: "Openings", icon: MusicNote01Icon },
+                  { type: "ending", label: "Endings", icon: MusicNote02Icon },
+                ] as const).map(({ type, label, icon }) => {
+                  const selected = defaults.songTypes.includes(type)
+                  return (
+                    <button
+                      key={type}
+                      type="button"
+                      role="switch"
+                      aria-checked={selected}
+                      aria-label={`Include ${label.toLowerCase()}`}
+                      onClick={() => toggleSongType(type)}
+                      className={cn(
+                        "flex flex-col gap-3 rounded-xl border p-5 text-left transition-all duration-200",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                        selected
+                          ? "border-primary/40 bg-primary/[0.06] ring-1 ring-primary/20"
+                          : "border-border/70 bg-card/40 hover:border-primary/35 hover:bg-primary/[0.04] hover:-translate-y-0.5 active:translate-y-0"
+                      )}
+                    >
+                      <div className={cn(
+                        "flex size-10 items-center justify-center rounded-lg transition-colors",
+                        selected
+                          ? "bg-primary/20 text-primary"
+                          : "bg-muted/60 text-muted-foreground"
+                      )}>
+                        <HugeiconsIcon icon={icon} strokeWidth={1.5} className="size-5" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold">{label}</p>
+                        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                          {type === "opening"
+                            ? "High-energy intro themes with iconic visuals."
+                            : "Calmer ending themes, often with unique art styles."}
+                        </p>
+                      </div>
+                      <div className={cn(
+                        "mt-1 self-end rounded-full px-2.5 py-0.5 text-[10px] font-semibold transition-colors",
+                        selected
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground"
+                      )}>
+                        {selected ? "On" : "Off"}
+                      </div>
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
-            {/* ── Songs count stepper ──────────────────── */}
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-2">
-                <HugeiconsIcon icon={MusicNote02Icon} strokeWidth={1.5} className="size-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Target songs</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="size-10 rounded-lg"
-                  disabled={defaults.songsCount <= 1}
-                  aria-label="Fewer songs"
-                  onClick={() =>
-                    setDefaults((c) => ({
-                      ...c,
-                      songsCount: Math.max(1, c.songsCount - 1),
-                    }))
-                  }
-                >
-                  <HugeiconsIcon icon={MinusSignIcon} strokeWidth={2} className="size-4" />
-                </Button>
-                <div className="flex size-14 items-center justify-center rounded-lg border border-border/60 bg-card/30 tabular-nums text-xl font-semibold">
-                  {defaults.songsCount}
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="size-10 rounded-lg"
-                  disabled={defaults.songsCount >= 50}
-                  aria-label="More songs"
-                  onClick={() =>
-                    setDefaults((c) => ({
-                      ...c,
-                      songsCount: Math.min(50, c.songsCount + 1),
-                    }))
-                  }
-                >
-                  <HugeiconsIcon icon={PlusSignIcon} strokeWidth={2} className="size-4" />
-                </Button>
-              </div>
-              <FieldDescription>
-                Total songs to include in each new compilation.
-              </FieldDescription>
-            </div>
+            <SongCountSettings
+              unlimited={defaults.unlimitedSongs}
+              onUnlimitedChange={(unlimitedSongs) =>
+                setDefaults((current) => ({ ...current, unlimitedSongs }))
+              }
+              count={defaults.songsCount}
+              onCountChange={(songsCount) =>
+                setDefaults((current) => ({ ...current, songsCount }))
+              }
+            />
 
-            {/* ── Clip length preset chips ─────────────── */}
+            {/* Clip length */}
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-2">
                 <HugeiconsIcon icon={Scissor01Icon} strokeWidth={1.5} className="size-4 text-muted-foreground" />
@@ -453,7 +309,7 @@ export default function SettingsPage() {
               </FieldDescription>
             </div>
 
-            {/* ── Encoder card grid ───────────────────── */}
+            {/* Encoder */}
             <div className="flex flex-col gap-3">
               <span className="text-sm font-medium">Encoder</span>
               <div className="grid grid-cols-2 gap-2 max-w-md">
@@ -480,7 +336,7 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* ── Audio normalize card toggle ─────────── */}
+            {/* Audio normalize */}
             <button
               type="button"
               role="switch"
@@ -525,37 +381,106 @@ export default function SettingsPage() {
             </button>
           </div>
 
-          <div className="flex gap-2 ml-10">
-            <Button onClick={saveDefaults}>Save defaults</Button>
-            <Button variant="outline" onClick={resetDefaults}>
-              Reset defaults
+          <Separator />
+
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">
+              Defaults are saved automatically.
+            </p>
+            <Button variant="ghost" size="sm" onClick={resetDefaults}>
+              Reset to factory defaults
             </Button>
           </div>
-        </section>
+        </TabsContent>
 
-        <Separator />
+        {/* ── Metadata tab ────────────────────────────────────── */}
+        <TabsContent value="metadata" className="flex flex-col gap-6 mt-6">
+          <p className="text-sm text-muted-foreground">
+            Choose which API to use first when searching anime and loading artwork.
+            The other provider kicks in automatically if the primary one fails.
+            Opening and ending themes always come from Jikan.
+          </p>
 
-        {/* ── Saved templates ─────────────────────────────── */}
-        <section className="flex flex-col gap-6">
-          <div className="flex items-baseline gap-3">
-            <span className="inline-flex size-7 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
-              3
-            </span>
-            <h2 className="font-heading text-lg font-semibold tracking-tight">
-              Saved templates
-            </h2>
+          <div className="grid grid-cols-2 gap-4">
+            {METADATA_PROVIDERS.map((provider) => {
+              const selected = appSettings.animeMetadataProvider === provider.value
+              return (
+                <button
+                  key={provider.value}
+                  type="button"
+                  onClick={() =>
+                    setAppSettings((cur) => ({
+                      ...cur,
+                      animeMetadataProvider: provider.value,
+                    }))
+                  }
+                  disabled={settingsLoading}
+                  aria-label={`Select ${provider.label}`}
+                  aria-pressed={selected}
+                  className={cn(
+                    "flex flex-col gap-3 rounded-xl border p-5 text-left transition-all duration-200",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                    "disabled:opacity-50 disabled:pointer-events-none",
+                    selected
+                      ? "border-primary/40 bg-primary/[0.06] ring-1 ring-primary/20"
+                      : "border-border/70 bg-card/40 hover:border-primary/35 hover:bg-primary/[0.04] hover:-translate-y-0.5 active:translate-y-0"
+                  )}
+                >
+                  <div className={cn(
+                    "flex size-10 items-center justify-center rounded-lg transition-colors",
+                    selected
+                      ? "bg-primary/20 text-primary"
+                      : "bg-muted/60 text-muted-foreground"
+                  )}>
+                    <HugeiconsIcon icon={provider.icon} strokeWidth={1.5} className="size-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">{provider.label}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                      {provider.desc}
+                    </p>
+                  </div>
+                  <div className={cn(
+                    "mt-1 self-end rounded-full px-2.5 py-0.5 text-[10px] font-semibold transition-colors",
+                    selected
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
+                  )}>
+                    {selected ? "Active" : "Select"}
+                  </div>
+                </button>
+              )
+            })}
           </div>
 
-          <p className="text-sm leading-relaxed text-muted-foreground -mt-2 ml-10">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button onClick={saveAppSettings} disabled={settingsLoading}>
+              Save metadata
+            </Button>
+            <Button
+              variant="outline"
+              onClick={resetAppSettings}
+              disabled={settingsLoading}
+            >
+              Reset
+            </Button>
+          </div>
+        </TabsContent>
+
+        {/* ── Templates tab ───────────────────────────────────── */}
+        <TabsContent value="templates" className="flex flex-col gap-6 mt-6">
+          <p className="text-sm text-muted-foreground">
             Named setups from the new compilation page. Stored in this browser only.
           </p>
 
           {templates.length === 0 ? (
-            <p className="ml-10 text-sm text-muted-foreground">
-              No templates yet. Save one from the new compilation page.
-            </p>
+            <div className="rounded-xl border border-dashed border-border/80 bg-muted/15 py-10 text-center">
+              <p className="text-sm text-muted-foreground">
+                No templates yet. Save one from the new compilation page.
+              </p>
+            </div>
           ) : (
-            <ul className="ml-10 flex flex-col gap-2">
+            <ul className="flex flex-col gap-2">
               {templates.map((template) => (
                 <li
                   key={template.id}
@@ -583,8 +508,8 @@ export default function SettingsPage() {
               ))}
             </ul>
           )}
-        </section>
-      </div>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

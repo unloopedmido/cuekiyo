@@ -123,10 +123,6 @@ export function SongSelection({
   }
 
   const maxSelection = project.unlimited_songs ? null : project.songs_count
-  const selectAllLabel = queryLower
-    ? `Select all filtered${maxSelection !== null ? ` (up to ${maxSelection})` : ""}`
-    : `Select all${maxSelection !== null ? ` (up to ${maxSelection})` : ""}`
-
   const queryLower = deferredQuery.trim().toLowerCase()
   const filtered = queryLower
     ? themes.filter(
@@ -135,6 +131,9 @@ export function SongSelection({
           (t.artist ?? "").toLowerCase().includes(queryLower)
       )
     : themes
+  const selectAllLabel = queryLower
+    ? `Select all filtered${maxSelection !== null ? ` (up to ${maxSelection})` : ""}`
+    : `Select all${maxSelection !== null ? ` (up to ${maxSelection})` : ""}`
 
   const animeNames = Object.fromEntries(
     project.animes.map((a) => [a.anime_mal_id, a.anime_name])
@@ -162,8 +161,8 @@ export function SongSelection({
         <h2 className="font-heading text-xl font-semibold">Choose songs</h2>
         <p className="text-sm text-muted-foreground">
           {project.unlimited_songs
-            ? `${selected.size} selected`
-            : `Pick up to ${project.songs_count} tracks. ${selected.size} selected.`}
+            ? `Select any themes you want. ${selected.size} selected so far.`
+            : `Select exactly ${project.songs_count} tracks. ${selected.size} of ${project.songs_count} chosen.`}
         </p>
       </div>
 

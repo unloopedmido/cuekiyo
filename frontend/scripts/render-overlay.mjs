@@ -2,19 +2,11 @@
 /**
  * Render a cinematic lower-third overlay PNG for one song clip.
  *
- * Design: horizontal lime accent line, sophisticated gradient,
- * dramatic type hierarchy, generous spacing, dual-layer text shadows.
- *
  * Usage: node render-overlay.mjs <payload.json>
  *
- * Payload fields:
- *   width, height — target video dimensions (used for proportional scaling)
- *   animeName, songLine, metaLine — text lines
- *   fontBold, fontRegular — absolute paths to TTF files
- *   output — absolute path for PNG output
- *   style — "default" | "minimal" (optional, default "default")
- *   position — "bottom" | "top" (optional, default "bottom")
- *   showAnimeName, showSongLine, showMetaLine — visibility flags (optional, default true)
+ * renderMode:
+ *   "strip" (default) — overlay bar only, for ffmpeg compositing
+ *   "frame" — full video frame with bar at top/bottom, for setup preview
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -32,6 +24,8 @@ const CJK_FONT_DIR = path.join(
   "files",
 );
 
+const DEFAULT_ACCENT = "#a3e635";
+
 const CJK_LANGUAGE_CODES = new Set([
   "ja",
   "ja-JP",
@@ -40,6 +34,12 @@ const CJK_LANGUAGE_CODES = new Set([
   "zh-HK",
   "ko-KR",
 ]);
+
+const FONT_SCALE_MULTIPLIER = {
+  compact: 0.88,
+  default: 1,
+  large: 1.12,
+};
 
 function isCjkLanguageCode(code) {
   return (
@@ -114,21 +114,36 @@ function buildCjkFallbackFonts(cjkFonts) {
   ];
 }
 
-// Brand accent — lime from Floating Cut Room design system
-const LIME = "#a3e635";
-const LIME_GLOW = "rgba(163,230,53,0.30)";
-
 function scale(px, factor) {
   return Math.max(Math.floor(px * factor), 1);
 }
 
-function buildLayout(width, height, { style = "default", position = "bottom" } = {}) {
-  const s = Math.max(height / 1080, 0.5);
+function accentGlowColor(accent) {
+  if (accent.startsWith("#") && accent.length === 7) {
+    const r = parseInt(accent.slice(1, 3), 16);
+    const g = parseInt(accent.slice(3, 5), 16);
+    const b = parseInt(accent.slice(5, 7), 16);
+    return `rgba(${r},${g},${b},0.30)`;
+  }
+  return "rgba(163,230,53,0.30)";
+}
+
+function buildLayout(width, height, options = {}) {
+  const {
+    style = "default",
+    position = "bottom",
+    fontScale = "default",
+  } = options;
+  const typeScale = FONT_SCALE_MULTIPLIER[fontScale] ?? 1;
+  const s = Math.max(height / 1080, 0.5) * typeScale;
   const minimal = style === "minimal";
 
   const barH = scale(minimal ? 96 : 148, s);
   const accentLineH = scale(minimal ? 2 : 3, s);
-  const accentLineW = Math.max(Math.floor(width * (minimal ? 0.1 : 0.15)), scale(minimal ? 40 : 56, s));
+  const accentLineW = Math.max(
+    Math.floor(width * (minimal ? 0.1 : 0.15)),
+    scale(minimal ? 40 : 56, s),
+  );
   const accentMarginLeft = scale(minimal ? 40 : 52, s);
   const accentMarginTop = scale(minimal ? 12 : 18, s);
   const gapAfterAccent = scale(minimal ? 10 : 14, s);
@@ -176,7 +191,7 @@ function buildLayout(width, height, { style = "default", position = "bottom" } =
   };
 }
 
-function overlayElement(payload, layout, visibility) {
+function overlayStripElement(payload, layout, visibility, colors) {
   const { animeName, songLine, metaLine } = payload;
   const { showAnimeName, showSongLine, showMetaLine } = visibility;
   const {
@@ -201,7 +216,8 @@ function overlayElement(payload, layout, visibility) {
     minimal,
   } = layout;
 
-  // Dual-layer text shadows: tight shadow for definition, wider shadow for contrast halo
+  const { accent, accentGlow, title, subtitle, meta } = colors;
+
   const animeShadow = `0 1px 4px rgba(0,0,0,0.95), 0 0 ${shadowBlur}px rgba(0,0,0,0.6)`;
   const songShadow = `0 1px 3px rgba(0,0,0,0.90), 0 0 ${shadowBlur}px rgba(0,0,0,0.55)`;
   const metaShadow = `0 1px 2px rgba(0,0,0,0.85), 0 0 ${shadowBlur}px rgba(0,0,0,0.45)`;
@@ -215,7 +231,7 @@ function overlayElement(payload, layout, visibility) {
             type: "div",
             props: {
               style: {
-                color: "#ffffff",
+                color: title,
                 fontSize: animeFs,
                 fontWeight: 700,
                 fontFamily: "OverlayBold",
@@ -234,7 +250,7 @@ function overlayElement(payload, layout, visibility) {
             type: "div",
             props: {
               style: {
-                color: "rgba(255,255,255,0.88)",
+                color: subtitle,
                 fontSize: songFs,
                 fontWeight: 400,
                 fontFamily: "OverlayRegular",
@@ -264,7 +280,7 @@ function overlayElement(payload, layout, visibility) {
                     style: {
                       width: dotSize,
                       height: dotSize,
-                      backgroundColor: LIME,
+                      backgroundColor: accent,
                       borderRadius: dotSize,
                       flexShrink: 0,
                     },
@@ -274,7 +290,7 @@ function overlayElement(payload, layout, visibility) {
                   type: "div",
                   props: {
                     style: {
-                      color: "rgba(255,255,255,0.65)",
+                      color: meta,
                       fontSize: metaFs,
                       fontWeight: 400,
                       fontFamily: "OverlayRegular",
@@ -313,8 +329,8 @@ function overlayElement(payload, layout, visibility) {
               top: accentMarginTop,
               width: accentLineW,
               height: accentLineH,
-              backgroundColor: LIME,
-              boxShadow: minimal ? "none" : `0 0 ${shadowBlur}px ${LIME_GLOW}`,
+              backgroundColor: accent,
+              boxShadow: minimal ? "none" : `0 0 ${shadowBlur}px ${accentGlow}`,
               borderRadius: accentRadius,
             },
           },
@@ -335,6 +351,26 @@ function overlayElement(payload, layout, visibility) {
           },
         },
       ],
+    },
+  };
+}
+
+function framePreviewElement(stripElement, width, height, position) {
+  return {
+    type: "div",
+    props: {
+      style: {
+        width,
+        height,
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: position === "top" ? "flex-start" : "flex-end",
+        backgroundColor: "#0c0c12",
+        backgroundImage:
+          "radial-gradient(ellipse 90% 70% at 50% 42%, rgba(48,48,62,0.95) 0%, rgba(12,12,18,1) 72%)",
+        position: "relative",
+      },
+      children: [stripElement],
     },
   };
 }
@@ -371,20 +407,44 @@ async function main() {
 
   const style = payload.style ?? "default";
   const position = payload.position ?? "bottom";
+  const fontScale = payload.fontScale ?? "default";
+  const renderMode = payload.renderMode ?? "strip";
   const showAnimeName = payload.showAnimeName ?? true;
   const showSongLine = payload.showSongLine ?? true;
   const showMetaLine = payload.showMetaLine ?? true;
 
-  const layout = buildLayout(payload.width, payload.height, { style, position });
-  const element = overlayElement(payload, layout, {
-    showAnimeName,
-    showSongLine,
-    showMetaLine,
+  const accent = payload.accentColor ?? DEFAULT_ACCENT;
+  const colors = {
+    accent,
+    accentGlow: accentGlowColor(accent),
+    title: payload.titleColor ?? "#ffffff",
+    subtitle: payload.subtitleColor ?? "rgba(255,255,255,0.88)",
+    meta: payload.metaColor ?? "rgba(255,255,255,0.65)",
+  };
+
+  const layout = buildLayout(payload.width, payload.height, {
+    style,
+    position,
+    fontScale,
   });
+  const stripElement = overlayStripElement(
+    payload,
+    layout,
+    { showAnimeName, showSongLine, showMetaLine },
+    colors,
+  );
+
+  const element =
+    renderMode === "frame"
+      ? framePreviewElement(stripElement, payload.width, payload.height, position)
+      : stripElement;
+
+  const canvasWidth = renderMode === "frame" ? payload.width : layout.canvasWidth;
+  const canvasHeight = renderMode === "frame" ? payload.height : layout.barH;
 
   const svg = await satori(element, {
-    width: layout.canvasWidth,
-    height: layout.barH,
+    width: canvasWidth,
+    height: canvasHeight,
     fonts,
     loadAdditionalAsset: async (code) => {
       if (code === "emoji") {
@@ -398,7 +458,7 @@ async function main() {
   });
 
   const resvg = new Resvg(svg, {
-    fitTo: { mode: "width", value: layout.canvasWidth },
+    fitTo: { mode: "width", value: canvasWidth },
   });
   const png = resvg.render().asPng();
 

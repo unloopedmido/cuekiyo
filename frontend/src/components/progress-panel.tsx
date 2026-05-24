@@ -10,7 +10,6 @@ import {
 } from "@hugeicons/core-free-icons"
 import { api } from "@/api"
 import { getStatusCopy } from "@/pipeline"
-import { formatSongType } from "@/lib/nav"
 import type { Job, ProgressEvent, Project, ProjectStatus, Song } from "@/types"
 import { Button } from "@/components/ui/button"
 import {
