@@ -43,6 +43,13 @@ def validate_user_gate_prerequisites(status: ProjectStatus, songs: list) -> None
         if missing:
             titles = ", ".join(s.song_title for s in missing)
             raise PrerequisiteError(f"Every song must have a selected candidate: {titles}")
+    elif status == ProjectStatus.AWAITING_CLIP_TRIM:
+        if not songs:
+            raise PrerequisiteError("Project has no songs")
+        for song in songs:
+            effective = song.clip_time if song.clip_time is not None else None
+            if effective is not None and effective < 1.0:
+                raise PrerequisiteError(f"Invalid clip duration for {song.song_title}")
     elif status == ProjectStatus.AWAITING_RENDER_ORDER:
         if not songs:
             raise PrerequisiteError("Project has no songs")
@@ -77,6 +84,8 @@ def next_status_after_song_selection(source_mode: SourceMode) -> ProjectStatus:
 
 def next_auto_status_after_user_gate(status: ProjectStatus) -> ProjectStatus | None:
     if status == ProjectStatus.AWAITING_CANDIDATES:
+        return ProjectStatus.AWAITING_CLIP_TRIM
+    if status == ProjectStatus.AWAITING_CLIP_TRIM:
         return ProjectStatus.DOWNLOADING
     if status == ProjectStatus.AWAITING_RENDER_ORDER:
         return ProjectStatus.RENDERING

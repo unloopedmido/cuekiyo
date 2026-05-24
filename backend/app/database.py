@@ -43,11 +43,19 @@ def _ensure_sqlite_columns() -> None:
     additions: list[tuple[str, str]] = [
         ("source_mode", "VARCHAR(16) NOT NULL DEFAULT 'auto'"),
         ("overlay_config_json", "TEXT NOT NULL DEFAULT '{}'"),
+        ("fade_seconds", "FLOAT NOT NULL DEFAULT 0.5"),
+        ("unlimited_songs", "BOOLEAN NOT NULL DEFAULT 0"),
     ]
     with engine.begin() as conn:
         for name, ddl in additions:
             if name not in existing:
                 conn.execute(text(f"ALTER TABLE projects ADD COLUMN {name} {ddl}"))
+
+    if "songs" in inspector.get_table_names():
+        song_cols = {col["name"] for col in inspector.get_columns("songs")}
+        if "clip_time" not in song_cols:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE songs ADD COLUMN clip_time FLOAT"))
 
     if "song_candidates" in inspector.get_table_names():
         cand_cols = {col["name"] for col in inspector.get_columns("song_candidates")}

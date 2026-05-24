@@ -7,6 +7,7 @@ class ProjectStatus(str, enum.Enum):
     SONG_SELECTION = "SONG_SELECTION"
     SOURCING = "SOURCING"
     AWAITING_CANDIDATES = "AWAITING_CANDIDATES"
+    AWAITING_CLIP_TRIM = "AWAITING_CLIP_TRIM"
     DOWNLOADING = "DOWNLOADING"
     PROBING_NORMALIZING = "PROBING_NORMALIZING"
     CUTTING = "CUTTING"
@@ -82,7 +83,11 @@ PROJECT_TRANSITIONS: dict[ProjectStatus, set[ProjectStatus]] = {
         ProjectStatus.FAILED,
     },
     ProjectStatus.SOURCING: {ProjectStatus.AWAITING_CANDIDATES, ProjectStatus.FAILED},
-    ProjectStatus.AWAITING_CANDIDATES: {ProjectStatus.DOWNLOADING, ProjectStatus.FAILED},
+    ProjectStatus.AWAITING_CANDIDATES: {
+        ProjectStatus.AWAITING_CLIP_TRIM,
+        ProjectStatus.FAILED,
+    },
+    ProjectStatus.AWAITING_CLIP_TRIM: {ProjectStatus.DOWNLOADING, ProjectStatus.FAILED},
     ProjectStatus.DOWNLOADING: {ProjectStatus.PROBING_NORMALIZING, ProjectStatus.FAILED},
     ProjectStatus.PROBING_NORMALIZING: {ProjectStatus.CUTTING, ProjectStatus.FAILED},
     ProjectStatus.CUTTING: {ProjectStatus.OVERLAYING, ProjectStatus.FAILED},
@@ -107,6 +112,7 @@ RUNNING_STATUSES = {
 USER_GATED_STATUSES = {
     ProjectStatus.SONG_SELECTION,
     ProjectStatus.AWAITING_CANDIDATES,
+    ProjectStatus.AWAITING_CLIP_TRIM,
     ProjectStatus.AWAITING_RENDER_ORDER,
 }
 
