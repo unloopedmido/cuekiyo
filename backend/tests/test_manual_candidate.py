@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi import HTTPException
 
-from app.enums import JobType, ProjectStatus, SongType, SourceMode, SongStatus
+from app.enums import ProjectStatus, SongType, SourceMode, SongStatus
 from app.models import Project, ProjectAnime, Song, SongCandidate
 from app.schemas.song import ManualCandidateRequest, SongSelectItem, SongSelectRequest
 from app.services.youtube_sourcer import CandidateResult
@@ -163,11 +163,10 @@ def test_submit_manual_candidate_starts_download_when_all_songs_selected(
 
     project, song = project_with_manual_song
     fake = _fake_candidate()
-    mock_job = MagicMock(id="job-download")
 
     with patch("app.api.routes.fetch_video_metadata", return_value=fake.raw_metadata):
         with patch("app.api.routes.metadata_to_candidate_result", return_value=fake):
-            with patch("app.api.routes.job_runner.start_job", return_value=mock_job) as start_job:
+            with patch("app.api.routes.job_runner.start_job") as start_job:
                 result = submit_manual_candidate(
                     project.id,
                     song.id,
@@ -176,10 +175,10 @@ def test_submit_manual_candidate_starts_download_when_all_songs_selected(
                 )
 
     assert result["ok"] is True
-    assert result["jobId"] == "job-download"
-    start_job.assert_called_once_with(project.id, JobType.DOWNLOAD)
+    assert result["jobId"] is None
+    start_job.assert_not_called()
     db_session.refresh(project)
-    assert project.status == ProjectStatus.DOWNLOADING.value
+    assert project.status == ProjectStatus.AWAITING_CLIP_TRIM.value
 
 
 def test_submit_manual_candidate_replaces_existing_candidates(db_session, project_with_manual_song):

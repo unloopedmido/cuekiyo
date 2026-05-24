@@ -62,6 +62,11 @@ class CandidateSelectRequest(BaseModel):
     candidate_id: str
 
 
+class SongClipUpdate(BaseModel):
+    cut_start_time: float | None = Field(default=None, ge=0.0)
+    clip_time: float | None = Field(default=None, ge=1.0, le=120.0)
+
+
 class SongOut(BaseModel):
     id: str
     project_id: str

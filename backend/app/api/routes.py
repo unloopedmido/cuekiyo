@@ -24,6 +24,7 @@ from app.schemas.song import (
     CandidateOut,
     CandidateSelectRequest,
     ManualCandidateRequest,
+    SongClipUpdate,
     SongOut,
     SongSelectRequest,
 )
@@ -425,14 +426,13 @@ def submit_manual_candidate(
 
     songs = db.query(Song).filter(Song.project_id == project_id).all()
     if all(s.selected_candidate_id for s in songs):
-        validate_transition(ProjectStatus.AWAITING_CANDIDATES, ProjectStatus.DOWNLOADING)
-        project.status = ProjectStatus.DOWNLOADING.value
+        validate_transition(ProjectStatus.AWAITING_CANDIDATES, ProjectStatus.AWAITING_CLIP_TRIM)
+        project.status = ProjectStatus.AWAITING_CLIP_TRIM.value
         db.commit()
-        job = job_runner.start_job(project_id, JobType.DOWNLOAD)
         return {
             "ok": True,
             "candidate": CandidateOut.model_validate(cand).model_dump(),
-            "jobId": job.id,
+            "jobId": None,
         }
     return {"ok": True, "candidate": CandidateOut.model_validate(cand).model_dump()}
 
@@ -457,12 +457,46 @@ def select_candidate(
     if all(s.selected_candidate_id for s in songs):
         if ProjectStatus(db.get(Project, project_id).status) == ProjectStatus.AWAITING_CANDIDATES:
             project = db.get(Project, project_id)
-            validate_transition(ProjectStatus.AWAITING_CANDIDATES, ProjectStatus.DOWNLOADING)
-            project.status = ProjectStatus.DOWNLOADING.value
+            validate_transition(ProjectStatus.AWAITING_CANDIDATES, ProjectStatus.AWAITING_CLIP_TRIM)
+            project.status = ProjectStatus.AWAITING_CLIP_TRIM.value
             db.commit()
-            job = job_runner.start_job(project_id, JobType.DOWNLOAD)
-            return {"ok": True, "jobId": job.id}
+            return {"ok": True, "jobId": None}
     return {"ok": True}
+
+
+@router.patch("/projects/{project_id}/songs/{song_id}/clip")
+def update_song_clip(
+    project_id: str, song_id: str, body: SongClipUpdate, db: Session = Depends(get_db)
+):
+    project = db.get(Project, project_id)
+    if not project or ProjectStatus(project.status) != ProjectStatus.AWAITING_CLIP_TRIM:
+        raise HTTPException(400, "Clip trim can only be edited during clip trim stage")
+    song = db.get(Song, song_id)
+    if not song or song.project_id != project_id:
+        raise HTTPException(404, "Song not found")
+    if body.cut_start_time is not None:
+        song.cut_start_time = body.cut_start_time
+    if body.clip_time is not None:
+        song.clip_time = body.clip_time
+    db.commit()
+    return SongOut.model_validate(song)
+
+
+@router.post("/projects/{project_id}/clip-trim/confirm")
+def confirm_clip_trim(project_id: str, db: Session = Depends(get_db)):
+    project = db.get(Project, project_id)
+    if not project or ProjectStatus(project.status) != ProjectStatus.AWAITING_CLIP_TRIM:
+        raise HTTPException(400, "Not awaiting clip trim")
+    songs = db.query(Song).filter(Song.project_id == project_id).all()
+    try:
+        validate_user_gate_prerequisites(ProjectStatus.AWAITING_CLIP_TRIM, songs)
+    except PrerequisiteError as e:
+        raise HTTPException(400, str(e)) from e
+    validate_transition(ProjectStatus.AWAITING_CLIP_TRIM, ProjectStatus.DOWNLOADING)
+    project.status = ProjectStatus.DOWNLOADING.value
+    db.commit()
+    job = job_runner.start_job(project_id, JobType.DOWNLOAD)
+    return {"jobId": job.id}
 
 
 @router.post("/projects/{project_id}/stage/start")
