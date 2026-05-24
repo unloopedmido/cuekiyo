@@ -3,9 +3,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi import HTTPException
 
-from app.enums import JobType, ProjectStatus, SourceMode, SongStatus
-from app.models import Project, Song, SongCandidate
-from app.schemas.song import ManualCandidateRequest
+from app.enums import JobType, ProjectStatus, SongType, SourceMode, SongStatus
+from app.models import Project, ProjectAnime, Song, SongCandidate
+from app.schemas.song import ManualCandidateRequest, SongSelectItem, SongSelectRequest
 from app.services.youtube_sourcer import CandidateResult
 
 
@@ -21,6 +21,46 @@ def _fake_candidate(*, duration: float = 120.0) -> CandidateResult:
         score=1.0,
         raw_metadata={"id": "abc12345678"},
     )
+
+
+def test_select_songs_manual_mode_skips_sourcing(db_session):
+    from app.api.routes import select_songs
+
+    project = Project(
+        title="Manual Project",
+        status=ProjectStatus.SONG_SELECTION.value,
+        source_mode=SourceMode.MANUAL.value,
+        songs_count=1,
+        song_types='["opening"]',
+        clip_time=10.0,
+    )
+    db_session.add(project)
+    db_session.flush()
+    db_session.add(
+        ProjectAnime(project_id=project.id, anime_mal_id=1, anime_name="Anime", display_order=0)
+    )
+    db_session.commit()
+
+    body = SongSelectRequest(
+        songs=[
+            SongSelectItem(
+                anime_mal_id=1,
+                anime_name="Anime",
+                song_type=SongType.OPENING,
+                song_number=1,
+                song_title="Song",
+                raw_theme_text="OP1",
+            )
+        ]
+    )
+
+    with patch("app.api.routes.job_runner.start_job") as start_job:
+        result = select_songs(project.id, body, db_session)
+
+    assert result == {"ok": True}
+    start_job.assert_not_called()
+    db_session.refresh(project)
+    assert project.status == ProjectStatus.AWAITING_CANDIDATES.value
 
 
 def test_submit_manual_candidate_creates_single_selected_candidate(

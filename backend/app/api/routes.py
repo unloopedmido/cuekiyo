@@ -32,6 +32,7 @@ from app.state_machine import (
     is_editable,
     job_type_for_status,
     next_auto_status_after_user_gate,
+    next_status_after_song_selection,
     validate_transition,
     validate_user_gate_prerequisites,
 )
@@ -326,11 +327,14 @@ def select_songs(project_id: str, body: SongSelectRequest, db: Session = Depends
                 render_order=i,
             )
         )
-    validate_transition(ProjectStatus.SONG_SELECTION, ProjectStatus.SOURCING)
-    project.status = ProjectStatus.SOURCING.value
+    next_status = next_status_after_song_selection(SourceMode(project.source_mode))
+    validate_transition(ProjectStatus.SONG_SELECTION, next_status)
+    project.status = next_status.value
     db.commit()
-    job = job_runner.start_job(project_id, JobType.SOURCE_CANDIDATES)
-    return {"jobId": job.id}
+    if next_status == ProjectStatus.SOURCING:
+        job = job_runner.start_job(project_id, JobType.SOURCE_CANDIDATES)
+        return {"jobId": job.id}
+    return {"ok": True}
 
 
 @router.get("/projects/{project_id}/songs")
