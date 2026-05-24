@@ -34,6 +34,8 @@ def project_to_out(
         "target_aspect_ratio": project.target_aspect_ratio,
         "encoder": project.encoder,
         "audio_normalize": project.audio_normalize,
+        "source_mode": project.source_mode,
+        "overlay_config": json.loads(project.overlay_config_json or "{}"),
         "output_path": project.output_path,
         "error_message": project.error_message,
         "created_at": project.created_at,

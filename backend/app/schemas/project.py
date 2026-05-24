@@ -1,8 +1,7 @@
-from datetime import datetime
-
 from pydantic import BaseModel, Field
 
-from app.enums import Encoder, ProjectStatus, SongType
+from app.enums import Encoder, SongType, SourceMode
+from app.schemas.overlay import OverlayConfig
 
 
 class ProjectAnimeIn(BaseModel):
@@ -24,6 +23,8 @@ class ProjectCreate(BaseModel):
     target_aspect_ratio: str = "16:9"
     encoder: Encoder = Encoder.AUTO
     audio_normalize: bool = True
+    source_mode: SourceMode = SourceMode.AUTO
+    overlay_config: OverlayConfig | None = None
 
 
 class ProjectUpdate(BaseModel):
@@ -37,6 +38,8 @@ class ProjectUpdate(BaseModel):
     target_aspect_ratio: str | None = None
     encoder: Encoder | None = None
     audio_normalize: bool | None = None
+    source_mode: SourceMode | None = None
+    overlay_config: OverlayConfig | None = None
 
 
 class ProjectAnimeOut(BaseModel):
@@ -44,28 +47,6 @@ class ProjectAnimeOut(BaseModel):
     anime_name: str
     display_order: int
     image_url: str | None = None
-
-    model_config = {"from_attributes": True}
-
-
-class ProjectOut(BaseModel):
-    id: str
-    title: str
-    status: ProjectStatus
-    songs_count: int
-    song_types: list[str]
-    clip_time: float
-    target_width: int
-    target_height: int
-    target_fps: int
-    target_aspect_ratio: str
-    encoder: str
-    audio_normalize: bool
-    output_path: str | None
-    error_message: str | None
-    created_at: datetime
-    updated_at: datetime
-    animes: list[ProjectAnimeOut] = []
 
     model_config = {"from_attributes": True}
 

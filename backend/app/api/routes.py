@@ -69,6 +69,7 @@ def list_projects(db: Session = Depends(get_db)):
 
 @router.post("/projects", status_code=201)
 def create_project(body: ProjectCreate, db: Session = Depends(get_db)):
+    overlay_config = body.overlay_config.model_dump() if body.overlay_config else {}
     project = Project(
         title=body.title,
         songs_count=body.songs_count,
@@ -80,6 +81,8 @@ def create_project(body: ProjectCreate, db: Session = Depends(get_db)):
         target_aspect_ratio=body.target_aspect_ratio,
         encoder=body.encoder.value,
         audio_normalize=body.audio_normalize,
+        source_mode=body.source_mode.value,
+        overlay_config_json=json.dumps(overlay_config),
         status=ProjectStatus.DRAFT.value,
     )
     db.add(project)
@@ -133,6 +136,10 @@ def update_project(project_id: str, body: ProjectUpdate, db: Session = Depends(g
             setattr(project, field, json.dumps([t.value for t in value]))
         elif field == "encoder" and value is not None:
             setattr(project, field, value.value)
+        elif field == "source_mode" and value is not None:
+            project.source_mode = value.value
+        elif field == "overlay_config" and value is not None:
+            project.overlay_config_json = json.dumps(value)
         elif value is not None:
             setattr(project, field, value)
     db.commit()
