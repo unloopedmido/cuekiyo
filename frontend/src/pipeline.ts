@@ -5,6 +5,7 @@ type StageId =
   | "themes"
   | "songs"
   | "candidates"
+  | "clip-trim"
   | "processing"
   | "order"
   | "render"
@@ -44,6 +45,7 @@ export const RUNNING_STATUSES = new Set<ProjectStatus>([
 const USER_GATED_STATUSES = new Set<ProjectStatus>([
   "SONG_SELECTION",
   "AWAITING_CANDIDATES",
+  "AWAITING_CLIP_TRIM",
   "AWAITING_RENDER_ORDER",
 ])
 
@@ -71,6 +73,12 @@ export const PIPELINE_STAGES: PipelineStage[] = [
     label: "Review clips",
     description: "Pick the best source for each song",
     statuses: ["AWAITING_CANDIDATES"],
+  },
+  {
+    id: "clip-trim",
+    label: "Trim clips",
+    description: "Set start time and length per song",
+    statuses: ["AWAITING_CLIP_TRIM"],
   },
   {
     id: "processing",
@@ -122,6 +130,11 @@ const STATUS_COPY: Record<ProjectStatus, StatusCopy> = {
   AWAITING_CANDIDATES: {
     label: "Review candidates",
     description: "Pick the best source clip for each song, or paste your own links.",
+    tone: "attention",
+  },
+  AWAITING_CLIP_TRIM: {
+    label: "Trim clips",
+    description: "Set where each clip starts and how long it runs before download.",
     tone: "attention",
   },
   DOWNLOADING: {
@@ -186,6 +199,7 @@ export function getProjectAction(status: ProjectStatus): string {
   if (status === "DRAFT") return "Load themes"
   if (status === "SONG_SELECTION") return "Review songs"
   if (status === "AWAITING_CANDIDATES") return "Review candidates"
+  if (status === "AWAITING_CLIP_TRIM") return "Trim clips"
   if (status === "AWAITING_RENDER_ORDER") return "Arrange order"
   if (status === "COMPLETED") return "Open output"
   if (status === "FAILED") return "Review issue"

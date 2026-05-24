@@ -58,6 +58,19 @@ export const api = {
 			`/projects/${projectId}/songs/${songId}/candidates/select`,
 			{ method: "POST", body: JSON.stringify({ candidate_id: candidateId }) },
 		),
+	updateSongClip: (
+		projectId: string,
+		songId: string,
+		body: { cut_start_time?: number | null; clip_time?: number | null },
+	) =>
+		request<Song>(`/projects/${projectId}/songs/${songId}/clip`, {
+			method: "PATCH",
+			body: JSON.stringify(body),
+		}),
+	confirmClipTrim: (projectId: string) =>
+		request<{ jobId: string }>(`/projects/${projectId}/clip-trim/confirm`, {
+			method: "POST",
+		}),
 	submitManualSource: (projectId: string, songId: string, url: string) =>
 		request<{ ok: boolean; candidate: Candidate; jobId?: string }>(
 			`/projects/${projectId}/songs/${songId}/candidates/manual`,

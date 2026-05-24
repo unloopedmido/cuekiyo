@@ -474,9 +474,9 @@ def update_song_clip(
     song = db.get(Song, song_id)
     if not song or song.project_id != project_id:
         raise HTTPException(404, "Song not found")
-    if body.cut_start_time is not None:
+    if "cut_start_time" in body.model_fields_set:
         song.cut_start_time = body.cut_start_time
-    if body.clip_time is not None:
+    if "clip_time" in body.model_fields_set:
         song.clip_time = body.clip_time
     db.commit()
     return SongOut.model_validate(song)

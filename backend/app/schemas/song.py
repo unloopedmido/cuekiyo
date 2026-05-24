@@ -81,5 +81,6 @@ class SongOut(BaseModel):
     status: str
     cut_start_time: float | None
     cut_end_time: float | None
+    clip_time: float | None
 
     model_config = {"from_attributes": True}

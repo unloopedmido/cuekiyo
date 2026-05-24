@@ -68,7 +68,30 @@ class _PrepareTask:
     enc: str
     candidate_url: str | None
     clip_time: float
+    song_clip_time: float | None
+    cut_start_time: float | None
     audio_normalize: bool
+
+
+def _compute_clip_window(
+    *,
+    video_duration: float,
+    clip_time: float,
+    song_clip_time: float | None,
+    cut_start_time: float | None,
+    heatmap_points: list[tuple[float, float]] | None,
+) -> tuple[float, float]:
+    effective_clip = song_clip_time if song_clip_time is not None else clip_time
+    effective_clip = min(effective_clip, video_duration)
+    if cut_start_time is not None:
+        start = max(0.0, min(cut_start_time, max(0.0, video_duration - effective_clip)))
+        return start, effective_clip
+    start, end = heatmap.highest_average_window(
+        heatmap_points or [], effective_clip, video_duration
+    )
+    if end - start < effective_clip:
+        end = min(video_duration, start + effective_clip)
+    return start, end - start
 
 
 @dataclass
@@ -876,6 +899,8 @@ class JobRunner:
                     enc=enc,
                     candidate_url=cand.url if cand else None,
                     clip_time=clip_time,
+                    song_clip_time=song.clip_time,
+                    cut_start_time=song.cut_start_time,
                     audio_normalize=audio_normalize,
                 )
             )
@@ -885,16 +910,20 @@ class JobRunner:
             logs: list[str] = []
             meta = ffmpeg_engine.ffprobe_json(task.inp)
             duration = float(meta.get("format", {}).get("duration", 90))
-            clip = min(task.clip_time, duration)
             heat = youtube_sourcer.fetch_heatmap(task.candidate_url) if task.candidate_url else None
-            start, end = heatmap.highest_average_window(heat or [], clip, duration)
-            if end - start < clip:
-                end = min(duration, start + clip)
+            start, clip_duration = _compute_clip_window(
+                video_duration=duration,
+                clip_time=task.clip_time,
+                song_clip_time=task.song_clip_time,
+                cut_start_time=task.cut_start_time,
+                heatmap_points=heat,
+            )
+            end = start + clip_duration
             cmd = ffmpeg_engine.build_prepare_clip_cmd(
                 task.inp,
                 task.out,
                 start,
-                end - start,
+                clip_duration,
                 task.width,
                 task.height,
                 task.fps,

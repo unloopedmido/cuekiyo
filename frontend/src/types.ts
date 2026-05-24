@@ -4,6 +4,7 @@ export type ProjectStatus =
   | "SONG_SELECTION"
   | "SOURCING"
   | "AWAITING_CANDIDATES"
+  | "AWAITING_CLIP_TRIM"
   | "DOWNLOADING"
   | "PROBING_NORMALIZING"
   | "CUTTING"
@@ -72,6 +73,9 @@ export interface Song {
   selected_candidate_id: string | null;
   render_order: number;
   status: string;
+  cut_start_time: number | null;
+  cut_end_time: number | null;
+  clip_time: number | null;
 }
 
 export interface Candidate {
