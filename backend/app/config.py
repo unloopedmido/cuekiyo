@@ -49,6 +49,7 @@ class Settings(BaseModel):
     ffmpeg_workers: int = 0
     ws_heartbeat_seconds: int = 30
     stale_lock_seconds: int = 120
+    serve_frontend: bool = False
 
     @property
     def database_url(self) -> str:
@@ -98,12 +99,16 @@ def _apply_env_overrides(data: dict) -> dict:
         ("PIPELINE_FFMPEG_WORKERS", "ffmpeg_workers", int),
         ("PIPELINE_WS_HEARTBEAT_SECONDS", "ws_heartbeat_seconds", int),
         ("PIPELINE_STALE_LOCK_SECONDS", "stale_lock_seconds", int),
+        ("PIPELINE_SERVE_FRONTEND", "serve_frontend", bool),
     ]
     for env_key, field, cast in env_map:
         raw = _env_str(env_key)
         if raw is None:
             continue
-        data[field] = cast(raw) if cast is not str else raw
+        if cast is bool:
+            data[field] = raw.lower() in ("1", "true", "yes", "on")
+        else:
+            data[field] = cast(raw) if cast is not str else raw
     return data
 
 

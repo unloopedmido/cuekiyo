@@ -11,14 +11,9 @@ Thanks for your interest in Cuekiyo. This project is local-first tooling for ani
 ## Development setup
 
 ```bash
-# Backend
-cd backend && python -m venv .venv && source .venv/bin/activate
-pip install -r requirements-dev.txt
-
-# Frontend
-cd frontend && npm ci
-
-# From repo root
+npm run setup   # first time: venv, npm ci, check ffmpeg/yt-dlp
+npm run dev     # backend :8000 + frontend :5173
+npm start       # single port :8000 (built frontend)
 npm test
 ```
 

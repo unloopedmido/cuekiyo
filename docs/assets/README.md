@@ -1,28 +1,24 @@
 # Launch assets
 
-Add these before making the repository public.
+Marketing assets for the public README and GitHub social preview.
 
-## Required
+| File | Purpose |
+|------|---------|
+| `demo.gif` | README hero — dashboard → review clips → finished output |
+| `dashboard.png` | Projects list with active and completed compilations |
+| `project-gate.png` | Candidate review checkpoint |
+| `completed.png` | Finished project with output actions |
+| `social-preview.png` | GitHub social preview (1280×640) — upload in repo Settings → General |
 
-| File | Purpose | Suggested capture |
-|------|---------|-------------------|
-| `demo.gif` | README hero — full flow in ~30s | Create project → songs → candidates → finished MP4 |
-| `dashboard.png` | README screenshot table | Projects list with at least one in-progress project |
-| `project-gate.png` | README screenshot table | Candidate selection or trim gate |
-| `completed.png` | README screenshot table | Completed project with output actions visible |
+## Regenerating
 
-## GitHub social preview
+Use the dark theme. Capture at 1440×900 (2× retina) for crisp PNGs. Avoid prominent copyrighted artwork in marketing shots when possible.
 
-Export a **1280×640** image for **Settings → General → Social preview** in the repo.
+```bash
+npm run dev
+# capture with browser automation or manual screenshots into this folder
+```
 
-Suggested layout: dark background, Cuekiyo wordmark, tagline, and a cropped dashboard screenshot. A starter template lives at [social-preview.svg](social-preview.svg) — open in a browser or design tool and export to PNG.
+Keep `demo.gif` under ~5 MB for README load times.
 
-## Tips
-
-- Use the dark theme for consistency with the default product experience.
-- Avoid copyrighted anime artwork in marketing assets when possible; use blurred thumbnails or your own licensed test content.
-- Keep GIF under ~5 MB for GitHub README load times (reduce frame rate or dimensions if needed).
-
-## After adding files
-
-Uncomment the demo line in [README.md](../README.md) and replace placeholder paths in the screenshots table.
+The SVG template at [social-preview.svg](social-preview.svg) remains available if you want to tweak the layout before exporting a new PNG.
