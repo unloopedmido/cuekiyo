@@ -31,6 +31,7 @@ import { PageHeader } from "@/components/page-header"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Field,
   FieldDescription,
@@ -73,6 +74,9 @@ export default function ProjectSetup() {
   const [initialDefaults] = useState(loadProjectDefaults)
   const [songTypes, setSongTypes] = useState(initialDefaults.songTypes)
   const [songsCount, setSongsCount] = useState(initialDefaults.songsCount)
+  const [unlimitedSongs, setUnlimitedSongs] = useState(
+    initialDefaults.unlimitedSongs
+  )
   const [clipTime, setClipTime] = useState(initialDefaults.clipTime)
   const [clipCustom, setClipCustom] = useState(false)
   const [encoder, setEncoder] = useState(initialDefaults.encoder)
@@ -103,6 +107,7 @@ export default function ProjectSetup() {
     setSourceMode(values.sourceMode ?? initialDefaults.sourceMode)
     setAudioNorm(values.audioNormalize)
     setOverlayConfig(values.overlayConfig ?? DEFAULT_OVERLAY_CONFIG)
+    setUnlimitedSongs(values.unlimitedSongs ?? initialDefaults.unlimitedSongs)
     toast.success("Template applied")
   }
 
@@ -119,6 +124,7 @@ export default function ProjectSetup() {
         audioNormalize: audioNorm,
         sourceMode,
         overlayConfig,
+        unlimitedSongs,
       }),
     })
     refreshTemplates()
@@ -238,6 +244,7 @@ export default function ProjectSetup() {
           audio_normalize: audioNorm,
           source_mode: sourceMode,
           overlay_config: overlayConfig,
+          unlimited_songs: unlimitedSongs,
         })
         await api.loadThemes(project.id)
         toast.success("Compilation started")
@@ -689,42 +696,64 @@ export default function ProjectSetup() {
               </div>
             </div>
 
-            {/* Songs count — stepper */}
+            {/* Songs count — stepper or no limit */}
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-2">
                 <HugeiconsIcon icon={MusicNote01Icon} strokeWidth={1.5} className="size-4 text-muted-foreground" />
                 <span className="text-sm font-medium">Target songs</span>
               </div>
-              <div className="flex items-center gap-1">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="size-10 rounded-lg"
-                  disabled={songsCount <= 1}
-                  aria-label="Fewer songs"
-                  onClick={() => setSongsCount(Math.max(1, songsCount - 1))}
-                >
-                  <HugeiconsIcon icon={MinusSignIcon} strokeWidth={2} className="size-4" />
-                </Button>
-                <div className="flex size-14 items-center justify-center rounded-lg border border-border/60 bg-card/30 tabular-nums text-xl font-semibold">
-                  {songsCount}
+              <Field className="flex flex-row items-start gap-3 rounded-lg border border-border/60 bg-card/30 p-3">
+                <Checkbox
+                  id="unlimited-songs"
+                  checked={unlimitedSongs}
+                  onCheckedChange={(checked) =>
+                    setUnlimitedSongs(checked === true)
+                  }
+                />
+                <div className="flex flex-col gap-1">
+                  <FieldLabel htmlFor="unlimited-songs" className="font-medium">
+                    No song limit
+                  </FieldLabel>
+                  <FieldDescription>
+                    Pick as many themes as you want. The song count stepper is
+                    hidden during selection.
+                  </FieldDescription>
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="size-10 rounded-lg"
-                  disabled={songsCount >= 50}
-                  aria-label="More songs"
-                  onClick={() => setSongsCount(Math.min(50, songsCount + 1))}
-                >
-                  <HugeiconsIcon icon={PlusSignIcon} strokeWidth={2} className="size-4" />
-                </Button>
-              </div>
-              <FieldDescription>
-                Total number of songs to include in this compilation.
-              </FieldDescription>
+              </Field>
+              {!unlimitedSongs ? (
+                <>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="size-10 rounded-lg"
+                      disabled={songsCount <= 1}
+                      aria-label="Fewer songs"
+                      onClick={() => setSongsCount(Math.max(1, songsCount - 1))}
+                    >
+                      <HugeiconsIcon icon={MinusSignIcon} strokeWidth={2} className="size-4" />
+                    </Button>
+                    <div className="flex size-14 items-center justify-center rounded-lg border border-border/60 bg-card/30 tabular-nums text-xl font-semibold">
+                      {songsCount}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="size-10 rounded-lg"
+                      disabled={songsCount >= 50}
+                      aria-label="More songs"
+                      onClick={() => setSongsCount(Math.min(50, songsCount + 1))}
+                    >
+                      <HugeiconsIcon icon={PlusSignIcon} strokeWidth={2} className="size-4" />
+                    </Button>
+                  </div>
+                  <FieldDescription>
+                    Total number of songs to include in this compilation.
+                  </FieldDescription>
+                </>
+              ) : null}
             </div>
 
             {/* Encoder — card grid */}

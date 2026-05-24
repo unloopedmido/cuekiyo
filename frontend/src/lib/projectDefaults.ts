@@ -12,6 +12,7 @@ export interface ProjectDefaults {
 	audioNormalize: boolean;
 	sourceMode: "auto" | "manual";
 	overlayConfig: OverlayConfig;
+	unlimitedSongs: boolean;
 }
 
 const STORAGE_KEY = "amv-project-defaults";
@@ -24,6 +25,7 @@ export const DEFAULT_PROJECT_DEFAULTS: ProjectDefaults = {
 	audioNormalize: true,
 	sourceMode: "auto",
 	overlayConfig: DEFAULT_OVERLAY_CONFIG,
+	unlimitedSongs: false,
 };
 
 export function loadProjectDefaults(): ProjectDefaults {
@@ -42,6 +44,8 @@ export function loadProjectDefaults(): ProjectDefaults {
 				parsed.audioNormalize ?? DEFAULT_PROJECT_DEFAULTS.audioNormalize,
 			sourceMode: parsed.sourceMode ?? DEFAULT_PROJECT_DEFAULTS.sourceMode,
 			overlayConfig: mergeOverlayConfig(parsed.overlayConfig ?? {}),
+			unlimitedSongs:
+				parsed.unlimitedSongs ?? DEFAULT_PROJECT_DEFAULTS.unlimitedSongs,
 		};
 	} catch {
 		return DEFAULT_PROJECT_DEFAULTS;
