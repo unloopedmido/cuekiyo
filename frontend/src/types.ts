@@ -14,6 +14,15 @@ export type ProjectStatus =
   | "FAILED"
   | "CANCELLED";
 
+export interface OverlayConfig {
+  enabled: boolean;
+  style: "default" | "minimal";
+  position: "bottom" | "top";
+  show_anime_name: boolean;
+  show_song_line: boolean;
+  show_meta_line: boolean;
+}
+
 export interface Project {
   id: string;
   title: string;
@@ -27,6 +36,8 @@ export interface Project {
   target_aspect_ratio: string;
   encoder: string;
   audio_normalize: boolean;
+  source_mode: "auto" | "manual";
+  overlay_config: OverlayConfig;
   output_path: string | null;
   error_message: string | null;
   created_at: string;
@@ -76,6 +87,7 @@ export interface Candidate {
   score: number;
   rank: number;
   is_selected: boolean;
+  is_manual: boolean;
   rejection_flags: string[];
 }
 

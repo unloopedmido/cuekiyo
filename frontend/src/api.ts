@@ -42,6 +42,11 @@ export const api = {
 			`/projects/${projectId}/songs/${songId}/candidates/select`,
 			{ method: "POST", body: JSON.stringify({ candidate_id: candidateId }) },
 		),
+	submitManualSource: (projectId: string, songId: string, url: string) =>
+		request<{ ok: boolean; candidate: Candidate; jobId?: string }>(
+			`/projects/${projectId}/songs/${songId}/candidates/manual`,
+			{ method: "POST", body: JSON.stringify({ url }) },
+		),
 	confirmRenderOrder: (id: string) =>
 		request<{ jobId: string }>(`/projects/${id}/render-order/confirm`, {
 			method: "POST",
