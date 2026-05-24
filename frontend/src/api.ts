@@ -124,6 +124,20 @@ export const api = {
 				year?: number;
 			}[]
 		>(`/anime/search?q=${encodeURIComponent(q)}`),
+	resolveAnimeList: (text: string) =>
+		request<{
+			resolved: {
+				mal_id: number;
+				title: string;
+				title_english?: string;
+				image_url?: string;
+				year?: number;
+			}[];
+			skipped: number;
+		}>("/anime/resolve-list", {
+			method: "POST",
+			body: JSON.stringify({ text }),
+		}),
 	binaries: () =>
 		request<Record<string, { available: boolean; detail: string }>>(
 			"/system/binaries",

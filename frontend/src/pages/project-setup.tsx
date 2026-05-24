@@ -25,6 +25,7 @@ import {
 } from "@/lib/project-templates"
 import { DEFAULT_OVERLAY_CONFIG } from "@/lib/overlay-config"
 import { OverlaySettings } from "@/components/overlay-settings"
+import { AnimeBulkImport } from "@/components/anime-bulk-import"
 import type { OverlayConfig } from "@/types"
 import { PageHeader } from "@/components/page-header"
 import { LoadingSpinner } from "@/components/loading-spinner"
@@ -185,6 +186,21 @@ export default function ProjectSetup() {
     if (!animes.some((a) => a.mal_id === result.mal_id)) {
       setAnimes([...animes, result])
     }
+  }
+
+  const addAnimeBulk = (results: AnimePick[]) => {
+    setAnimes((prev) => {
+      const seen = new Set(prev.map((a) => a.mal_id))
+      const next = [...prev]
+      for (const result of results) {
+        if (!seen.has(result.mal_id)) {
+          seen.add(result.mal_id)
+          next.push(result)
+        }
+      }
+      return next
+    })
+    setTouchedAnimes(true)
   }
 
   const removeAnime = (malId: number) => {
@@ -369,6 +385,10 @@ export default function ProjectSetup() {
                 Add at least one anime to continue.
               </FieldDescription>
             )}
+            <AnimeBulkImport
+              existingIds={new Set(animes.map((a) => a.mal_id))}
+              onImport={addAnimeBulk}
+            />
           </Field>
 
           {/* Search results grid */}
