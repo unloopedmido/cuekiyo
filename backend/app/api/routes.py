@@ -168,6 +168,45 @@ def delete_project(project_id: str, db: Session = Depends(get_db)):
     return {"ok": True}
 
 
+@router.post("/projects/{project_id}/duplicate", status_code=201)
+def duplicate_project(project_id: str, db: Session = Depends(get_db)):
+    source = db.get(Project, project_id)
+    if not source:
+        raise HTTPException(404, "Project not found")
+    clone = Project(
+        title=f"Copy of {source.title}",
+        status=ProjectStatus.DRAFT.value,
+        songs_count=source.songs_count,
+        song_types=source.song_types,
+        clip_time=source.clip_time,
+        target_width=source.target_width,
+        target_height=source.target_height,
+        target_fps=source.target_fps,
+        target_aspect_ratio=source.target_aspect_ratio,
+        encoder=source.encoder,
+        audio_normalize=source.audio_normalize,
+        source_mode=source.source_mode,
+        overlay_config_json=source.overlay_config_json,
+        fade_seconds=source.fade_seconds,
+        unlimited_songs=source.unlimited_songs,
+    )
+    db.add(clone)
+    db.flush()
+    for anime in source.animes:
+        db.add(
+            ProjectAnime(
+                project_id=clone.id,
+                anime_mal_id=anime.anime_mal_id,
+                anime_name=anime.anime_name,
+                display_order=anime.display_order,
+            )
+        )
+    db.commit()
+    db.refresh(clone)
+    images = anime_image_map(db, [clone])
+    return project_to_out(clone, images)
+
+
 @router.post("/projects/{project_id}/load-themes")
 def start_load_themes(project_id: str, db: Session = Depends(get_db)):
     project = db.get(Project, project_id)
