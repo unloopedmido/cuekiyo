@@ -35,6 +35,10 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Search01Icon } from "@hugeicons/core-free-icons"
 import { formatSongType } from "@/lib/nav"
+import {
+  deselectAllThemes,
+  selectAllThemes,
+} from "@/lib/song-selection-actions"
 
 export function SongSelection({
   project,
@@ -67,7 +71,12 @@ export function SongSelection({
   const toggle = (id: string, checked: boolean) => {
     const next = new Set(selected)
     if (checked) {
-      if (next.size < project.songs_count) next.add(id)
+      if (
+        project.unlimited_songs ||
+        next.size < project.songs_count
+      ) {
+        next.add(id)
+      }
     } else {
       next.delete(id)
     }
@@ -105,9 +114,18 @@ export function SongSelection({
   }
 
   const handleSubmit = () => {
+    if (project.unlimited_songs) {
+      if (selected.size >= 1) void submit(false)
+      return
+    }
     if (selected.size === project.songs_count) void submit(false)
     else if (selected.size > 0) setConfirmFewerOpen(true)
   }
+
+  const maxSelection = project.unlimited_songs ? null : project.songs_count
+  const selectAllLabel = queryLower
+    ? `Select all filtered${maxSelection !== null ? ` (up to ${maxSelection})` : ""}`
+    : `Select all${maxSelection !== null ? ` (up to ${maxSelection})` : ""}`
 
   const queryLower = deferredQuery.trim().toLowerCase()
   const filtered = queryLower
@@ -143,11 +161,14 @@ export function SongSelection({
       <div className="flex flex-col gap-1">
         <h2 className="font-heading text-xl font-semibold">Choose songs</h2>
         <p className="text-sm text-muted-foreground">
-          Pick up to {project.songs_count} tracks. {selected.size} selected.
+          {project.unlimited_songs
+            ? `${selected.size} selected`
+            : `Pick up to ${project.songs_count} tracks. ${selected.size} selected.`}
         </p>
       </div>
 
-      <InputGroup className="h-9 max-w-md">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <InputGroup className="h-9 max-w-md">
         <InputGroupAddon align="inline-start">
           <HugeiconsIcon icon={Search01Icon} strokeWidth={2} />
         </InputGroupAddon>
@@ -156,7 +177,28 @@ export function SongSelection({
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Filter by title or artist"
         />
-      </InputGroup>
+        </InputGroup>
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              setSelected(selectAllThemes(filtered, maxSelection))
+            }
+          >
+            {selectAllLabel}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setSelected(deselectAllThemes())}
+          >
+            Deselect all
+          </Button>
+        </div>
+      </div>
 
       {error && (
         <p className="text-sm text-destructive" role="alert">
@@ -186,6 +228,7 @@ export function SongSelection({
                         checked={selected.has(t.id)}
                         onCheckedChange={(c) => toggle(t.id, c === true)}
                         disabled={
+                          !project.unlimited_songs &&
                           !selected.has(t.id) &&
                           selected.size >= project.songs_count
                         }

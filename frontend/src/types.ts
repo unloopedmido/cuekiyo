@@ -39,6 +39,7 @@ export interface Project {
   audio_normalize: boolean;
   source_mode: "auto" | "manual";
   overlay_config: OverlayConfig;
+  unlimited_songs: boolean;
   output_path: string | null;
   error_message: string | null;
   created_at: string;
