@@ -13,11 +13,17 @@ from app.enums import JobType, ProjectStatus, SongStatus, SourceMode
 from app.jobs.runner import job_runner, release_lock_for_project
 from app.jobs.websocket_manager import ws_manager
 from app.models import AnimeCache, Job, JobLog, Project, ProjectAnime, Song, SongCandidate, ThemeSong
-from app.schemas.anime import AnimeSearchResult, ThemeSongOut
+from app.schemas.anime import (
+    AnimeBulkResolveRequest,
+    AnimeBulkResolveResponse,
+    AnimeSearchResult,
+    ThemeSongOut,
+)
 from app.schemas.job import JobLogOut, JobOut
 from app.schemas.project import ProjectCreate, ProjectUpdate, RenderOrderUpdate
 from app.schemas.settings import AppSettingsOut, AppSettingsUpdate
 from app.services import anime_metadata, ffmpeg_engine, overlay_renderer
+from app.services.anime_list_parser import parse_anime_list_text
 from app.services.paths import project_dir, sanitize_filename
 from app.services.youtube_url import fetch_video_metadata, metadata_to_candidate_result
 from app.schemas.overlay import OverlayPreviewRequest
@@ -300,6 +306,34 @@ def get_app_settings():
 def update_app_settings(body: AppSettingsUpdate):
     updated = save_settings({"anime_metadata_provider": body.anime_metadata_provider})
     return AppSettingsOut(anime_metadata_provider=updated.anime_metadata_provider)
+
+
+@router.post("/anime/resolve-list", response_model=AnimeBulkResolveResponse)
+async def resolve_anime_list(body: AnimeBulkResolveRequest):
+    ids = parse_anime_list_text(body.text)
+    if not ids:
+        raise HTTPException(400, "No valid MAL or AniList IDs found")
+    if len(ids) > 100:
+        raise HTTPException(400, "Maximum 100 anime per import")
+    results: list[AnimeSearchResult] = []
+    for raw_id in ids:
+        try:
+            meta = await anime_metadata.get_anime(raw_id)
+        except Exception:
+            continue
+        mal_id = meta.get("mal_id")
+        if not mal_id:
+            continue
+        results.append(
+            AnimeSearchResult(
+                mal_id=mal_id,
+                title=meta.get("title", ""),
+                title_english=meta.get("title_english"),
+                image_url=meta.get("image_url"),
+                year=meta.get("year"),
+            )
+        )
+    return AnimeBulkResolveResponse(resolved=results, skipped=len(ids) - len(results))
 
 
 @router.get("/anime/search")

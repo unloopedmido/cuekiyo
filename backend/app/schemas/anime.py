@@ -1,6 +1,15 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.enums import SongType
+
+
+class AnimeBulkResolveRequest(BaseModel):
+    text: str = Field(max_length=20_000)
+
+
+class AnimeBulkResolveResponse(BaseModel):
+    resolved: list["AnimeSearchResult"]
+    skipped: int
 
 
 class AnimeSearchResult(BaseModel):
