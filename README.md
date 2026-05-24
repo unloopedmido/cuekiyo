@@ -12,13 +12,13 @@
   <img alt="Stack" src="https://img.shields.io/badge/stack-FastAPI%20%2B%20React-61DAFB?style=flat-square">
 </p>
 
-## Turn anime picks into finished MVs locally
+## Build anime opening/ending compilations without leaving your machine
 
 **Cuekiyo is a local studio for building anime opening and ending compilations.**
 
-Pick the shows, approve the songs, choose the clips, and export a titled MV without uploading footage, paying for a cloud editor, or stitching everything together by hand.
+Pick the shows, approve the songs, choose the clips, and export a titled compilation without uploading footage, paying for a cloud editor, or stitching everything together by hand.
 
-No cloud. No subscription. No upload step. Just your machine, your files, and a guided workflow that stops only when your taste matters.
+No cloud. No subscription. No upload step. Just your machine, your files, and a guided workflow that pauses only when you need to make a choice.
 
 ## Why Cuekiyo exists
 
@@ -43,7 +43,7 @@ Cuekiyo turns that into a guided local pipeline. You still make the taste decisi
 | Manually hunting every opening | Ranked YouTube candidates you can approve or replace |
 | Rebuilding the same edit repeatedly | Re-render clips without downloading everything again |
 | Losing track of project files | Each project stored under `data/projects/{id}/` |
-| Needing one fixed workflow | Paste your own links, bulk MAL import, or save project templates |
+| Needing one fixed workflow | Paste your own links, import from MyAnimeList, or save project templates |
 | Automation guessing wrong on a source | Manual YouTube links per song, always available |
 
 ## See it in action
@@ -53,6 +53,8 @@ Cuekiyo turns that into a guided local pipeline. You still make the taste decisi
 | ![Dashboard](docs/assets/dashboard.png) | ![Review clips gate](docs/assets/project-gate.png) | ![Completed project](docs/assets/completed.png) |
 
 ## Quick start
+
+Requires **Python 3.11+**, **Node.js 24 LTS**, `ffmpeg`, `ffprobe`, and `yt-dlp`.
 
 ```bash
 git clone https://github.com/unloopedmido/cuekiyo.git
@@ -97,7 +99,7 @@ That also means you bring the tools: Python, Node, `ffmpeg`, and `yt-dlp`. See [
 **macOS** — `brew install yt-dlp ffmpeg`  
 **Windows** — `winget install yt-dlp.yt-dlp` and `winget install Gyan.FFmpeg`
 
-Verify binaries: http://127.0.0.1:8000/api/system/binaries (all four entries should be available after `npm run dev` or `npm start`).
+Verify binaries: http://127.0.0.1:8000/api/system/binaries (`yt-dlp`, `ffmpeg`, `ffprobe`, and overlay rendering should all report available after `npm run dev` or `npm start`).
 
 <details>
 <summary>Configuration</summary>
@@ -156,7 +158,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for PR guidelines and [SECURITY.md](SECUR
 - Trim gate → custom start/duration on one song; heatmap on another
 - Re-apply overlay / render again → no re-download
 - Duplicate project, download clips ZIP, save/load project templates
-- Bulk MAL import + unlimited songs; crossfade 0 s vs 1 s on final MP4
+- Bulk MyAnimeList import + unlimited songs; crossfade 0 s vs 1 s on final MP4
 
 </details>
 
