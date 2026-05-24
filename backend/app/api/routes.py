@@ -1,9 +1,10 @@
 import json
 import shutil
+import tempfile
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -18,6 +19,7 @@ from app.schemas.settings import AppSettingsOut, AppSettingsUpdate
 from app.services import anime_metadata, ffmpeg_engine, overlay_renderer
 from app.services.paths import project_dir
 from app.services.youtube_url import fetch_video_metadata, metadata_to_candidate_result
+from app.schemas.overlay import OverlayPreviewRequest
 from app.schemas.song import (
     CandidateOut,
     CandidateSelectRequest,
@@ -25,6 +27,7 @@ from app.schemas.song import (
     SongOut,
     SongSelectRequest,
 )
+from app.services.overlay_renderer import OverlayContent, render_overlay_png
 from app.config import settings, save_settings
 from app.exceptions import PrerequisiteError
 from app.state_machine import (
@@ -604,6 +607,19 @@ def download_output(project_id: str, db: Session = Depends(get_db)):
     if not project or not project.output_path or not Path(project.output_path).exists():
         raise HTTPException(404, "Output not found")
     return FileResponse(project.output_path, media_type="video/mp4", filename=Path(project.output_path).name)
+
+
+@router.post("/overlay/preview")
+def preview_overlay(body: OverlayPreviewRequest):
+    content = OverlayContent(
+        anime_name=body.anime_name,
+        song_line=body.song_line,
+        meta_line=body.meta_line,
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "preview.png"
+        render_overlay_png(content, body.width, body.height, out, config=body.config)
+        return Response(content=out.read_bytes(), media_type="image/png")
 
 
 @router.post("/projects/{project_id}/output/open-folder")
