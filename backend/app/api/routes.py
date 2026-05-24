@@ -97,6 +97,7 @@ def create_project(body: ProjectCreate, db: Session = Depends(get_db)):
         source_mode=body.source_mode.value,
         overlay_config_json=json.dumps(overlay_config),
         fade_seconds=body.fade_seconds,
+        unlimited_songs=body.unlimited_songs,
         status=ProjectStatus.DRAFT.value,
     )
     db.add(project)
@@ -373,8 +374,15 @@ def select_songs(project_id: str, body: SongSelectRequest, db: Session = Depends
         raise HTTPException(404, "Project not found")
     if ProjectStatus(project.status) != ProjectStatus.SONG_SELECTION:
         raise HTTPException(400, "Not in song selection")
-    if len(body.songs) != project.songs_count and not body.confirm_fewer:
-        raise HTTPException(400, f"Select exactly {project.songs_count} songs or confirm fewer")
+    if not project.unlimited_songs:
+        if len(body.songs) != project.songs_count and not body.confirm_fewer:
+            raise HTTPException(
+                400, f"Select exactly {project.songs_count} songs or confirm fewer"
+            )
+    elif len(body.songs) < 1:
+        raise HTTPException(400, "Select at least one song")
+    else:
+        project.songs_count = len(body.songs)
 
     allowed_mal_ids = {a.anime_mal_id for a in project.animes}
     allowed_song_types = set(json.loads(project.song_types or "[]"))

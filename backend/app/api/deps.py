@@ -37,6 +37,7 @@ def project_to_out(
         "source_mode": project.source_mode,
         "overlay_config": json.loads(project.overlay_config_json or "{}"),
         "fade_seconds": project.fade_seconds,
+        "unlimited_songs": project.unlimited_songs,
         "output_path": project.output_path,
         "error_message": project.error_message,
         "created_at": project.created_at,

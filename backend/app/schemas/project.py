@@ -26,6 +26,7 @@ class ProjectCreate(BaseModel):
     source_mode: SourceMode = SourceMode.AUTO
     overlay_config: OverlayConfig | None = None
     fade_seconds: float = Field(default=0.5, ge=0.0, le=3.0)
+    unlimited_songs: bool = False
 
 
 class ProjectUpdate(BaseModel):
@@ -42,6 +43,7 @@ class ProjectUpdate(BaseModel):
     source_mode: SourceMode | None = None
     overlay_config: OverlayConfig | None = None
     fade_seconds: float | None = Field(default=None, ge=0.0, le=3.0)
+    unlimited_songs: bool | None = None
 
 
 class ProjectAnimeOut(BaseModel):
