@@ -67,6 +67,11 @@ class LogLevel(str, enum.Enum):
     ERROR = "error"
 
 
+class SourceMode(str, enum.Enum):
+    AUTO = "auto"
+    MANUAL = "manual"
+
+
 # Valid project status transitions (excluding FAILED/CANCELLED from any running)
 PROJECT_TRANSITIONS: dict[ProjectStatus, set[ProjectStatus]] = {
     ProjectStatus.DRAFT: {ProjectStatus.LOADING_THEMES},

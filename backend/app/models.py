@@ -14,7 +14,16 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
-from app.enums import Encoder, JobStatus, JobType, LogLevel, ProjectStatus, SongStatus, SongType
+from app.enums import (
+    Encoder,
+    JobStatus,
+    JobType,
+    LogLevel,
+    ProjectStatus,
+    SongStatus,
+    SongType,
+    SourceMode,
+)
 
 
 def _uuid() -> str:
@@ -40,7 +49,8 @@ class Project(Base):
     target_aspect_ratio: Mapped[str] = mapped_column(String(16), default="16:9")
     encoder: Mapped[str] = mapped_column(String(32), default=Encoder.AUTO.value)
     audio_normalize: Mapped[bool] = mapped_column(Boolean, default=True)
-    overlay_template_html: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source_mode: Mapped[str] = mapped_column(String(16), default=SourceMode.AUTO.value)
+    overlay_config_json: Mapped[str] = mapped_column(Text, default="{}")
     output_path: Mapped[str | None] = mapped_column(Text, nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
@@ -146,6 +156,7 @@ class SongCandidate(Base):
     score: Mapped[float] = mapped_column(Float, default=0.0)
     rank: Mapped[int] = mapped_column(Integer, default=0)
     is_selected: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_manual: Mapped[bool] = mapped_column(Boolean, default=False)
     rejection_flags: Mapped[str] = mapped_column(Text, default="[]")
     raw_metadata_json: Mapped[str] = mapped_column(Text, default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
