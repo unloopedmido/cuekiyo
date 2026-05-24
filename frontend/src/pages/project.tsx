@@ -6,7 +6,12 @@ import { RefreshIcon } from "@hugeicons/core-free-icons"
 import { api, connectWebSocket } from "@/api"
 import { usePolling } from "@/hooks/usePolling"
 import { errorToMessage } from "@/lib/errors"
-import { RUNNING_STATUSES, getStatusCopy, isUserGatedStatus } from "@/pipeline"
+import {
+  RUNNING_STATUSES,
+  getStatusCopy,
+  isSettingsEditable,
+  isUserGatedStatus,
+} from "@/pipeline"
 import type { ProgressEvent, Project } from "@/types"
 import { CandidateSelection } from "@/components/candidate-selection"
 import { ClipTrimEditor } from "@/components/clip-trim-editor"
@@ -18,6 +23,7 @@ import { PipelineStepper } from "@/components/pipeline-stepper"
 import { ProgressPanel } from "@/components/progress-panel"
 import { ProjectsNavLink } from "@/components/projects-nav-link"
 import { RenderOrder } from "@/components/render-order"
+import { ProjectEditPanel } from "@/components/project-edit-panel"
 import { SongSelection } from "@/components/song-selection"
 import { StatusBadge } from "@/components/status-badge"
 import { LoadingSpinner } from "@/components/loading-spinner"
@@ -143,6 +149,16 @@ export default function ProjectPage() {
         </aside>
 
         <div className="flex min-w-0 flex-col gap-6">
+          {isSettingsEditable(project.status) && (
+            <ProjectEditPanel
+              project={project}
+              onSaved={(updated) => {
+                setProject(updated)
+                setError(null)
+              }}
+            />
+          )}
+
           {running && (
             <ProgressPanel
               projectId={id}

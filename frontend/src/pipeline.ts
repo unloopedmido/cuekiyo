@@ -211,6 +211,10 @@ export function isUserGatedStatus(status: ProjectStatus): boolean {
   return USER_GATED_STATUSES.has(status)
 }
 
+export function isSettingsEditable(status: ProjectStatus): boolean {
+  return status === "DRAFT" || status === "SONG_SELECTION"
+}
+
 export function getStageIndex(status: ProjectStatus): number {
   const stage = getProjectStage(status)
   return PIPELINE_STAGES.findIndex((item) => item.id === stage.id)

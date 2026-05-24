@@ -5,6 +5,7 @@ import {
   getProjectAction,
   getProjectStage,
   getStatusCopy,
+  isSettingsEditable,
   isUserGatedStatus,
 } from "../src/pipeline.ts";
 
@@ -49,4 +50,11 @@ test("identifies only taste checkpoints as user gated", () => {
   assert.equal(isUserGatedStatus("AWAITING_CLIP_TRIM"), true);
   assert.equal(isUserGatedStatus("AWAITING_RENDER_ORDER"), true);
   assert.equal(isUserGatedStatus("RENDERING"), false);
+});
+
+test("allows settings edits only in draft and song selection", () => {
+  assert.equal(isSettingsEditable("DRAFT"), true);
+  assert.equal(isSettingsEditable("SONG_SELECTION"), true);
+  assert.equal(isSettingsEditable("AWAITING_CANDIDATES"), false);
+  assert.equal(isSettingsEditable("COMPLETED"), false);
 });

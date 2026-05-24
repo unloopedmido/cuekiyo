@@ -1,10 +1,11 @@
 import { useDeferredValue, useEffect, useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Add01Icon,
   ArrowRight01Icon,
+  ClipboardCopyIcon,
   Delete02Icon,
   Folder01Icon,
   MoreVerticalIcon,
@@ -120,6 +121,7 @@ function cardAccent(
 }
 
 export default function Dashboard() {
+  const nav = useNavigate()
   const [projects, setProjects] = useState<Project[]>([])
   const [binaries, setBinaries] = useState<
     Record<string, { available: boolean; detail: string }>
@@ -134,6 +136,7 @@ export default function Dashboard() {
     null
   )
   const [renderingAgain, setRenderingAgain] = useState(false)
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null)
 
   const load = (options?: { showLoading?: boolean }) => {
     if (options?.showLoading !== false) setLoading(true)
@@ -232,6 +235,19 @@ export default function Dashboard() {
       load()
     } catch (e) {
       toast.error(errorToMessage(e))
+    }
+  }
+
+  const handleDuplicate = async (project: Project) => {
+    setDuplicatingId(project.id)
+    try {
+      const copy = await api.duplicateProject(project.id)
+      toast.success("Compilation duplicated")
+      nav(`/projects/${copy.id}`)
+    } catch (e) {
+      toast.error(errorToMessage(e))
+    } finally {
+      setDuplicatingId(null)
     }
   }
 
@@ -504,6 +520,17 @@ export default function Dashboard() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            disabled={duplicatingId === p.id}
+                            onClick={() => void handleDuplicate(p)}
+                          >
+                            <HugeiconsIcon
+                              icon={ClipboardCopyIcon}
+                              strokeWidth={2}
+                              data-icon="inline-start"
+                            />
+                            {duplicatingId === p.id ? "Duplicating…" : "Duplicate"}
+                          </DropdownMenuItem>
                           {isCompleted && (
                             <DropdownMenuItem
                               onClick={() => setRenderAgainTarget(p)}

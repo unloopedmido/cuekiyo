@@ -38,6 +38,13 @@ export const api = {
 			body: JSON.stringify(body),
 		}),
 	getProject: (id: string) => request<Project>(`/projects/${id}`),
+	patchProject: (id: string, body: Record<string, unknown>) =>
+		request<Project>(`/projects/${id}`, {
+			method: "PATCH",
+			body: JSON.stringify(body),
+		}),
+	duplicateProject: (id: string) =>
+		request<Project>(`/projects/${id}/duplicate`, { method: "POST" }),
 	deleteProject: (id: string) =>
 		request<{ ok: boolean }>(`/projects/${id}`, { method: "DELETE" }),
 	loadThemes: (id: string) =>
