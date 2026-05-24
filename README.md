@@ -118,6 +118,22 @@ npm run build
 
 CI runs both on push (see [`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
 
+## Manual verification
+
+### Manual source mode
+
+1. Create project with "I'll paste YouTube links"
+2. Complete song selection
+3. Confirm pipeline skips "Sourcing" and lands on "Review clips"
+4. Paste a valid YouTube URL per song; confirm thumbnail/title appear
+5. After last song, confirm download stage starts automatically
+
+### Overlay customization
+
+1. Create project with overlay disabled → confirm final clips have no lower-third
+2. Create project with minimal + top position → confirm overlay appears at top with reduced chrome
+3. Use Preview on setup page → PNG renders without running full pipeline
+
 ## Data layout
 
 | Path | Purpose |
