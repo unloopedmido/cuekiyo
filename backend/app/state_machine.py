@@ -4,6 +4,7 @@ from app.enums import (
     USER_GATED_STATUSES,
     JobType,
     ProjectStatus,
+    SourceMode,
     STATUS_TO_JOB_TYPE,
 )
 from app.exceptions import PrerequisiteError
@@ -64,22 +65,14 @@ def is_deletable(status: ProjectStatus) -> bool:
     )
 
 
-def retry_target_status(failed_status: ProjectStatus) -> ProjectStatus:
-    """Restart from the beginning of the failed stage."""
-    mapping = {
-        ProjectStatus.LOADING_THEMES: ProjectStatus.LOADING_THEMES,
-        ProjectStatus.SOURCING: ProjectStatus.SOURCING,
-        ProjectStatus.DOWNLOADING: ProjectStatus.DOWNLOADING,
-        ProjectStatus.PROBING_NORMALIZING: ProjectStatus.PROBING_NORMALIZING,
-        ProjectStatus.CUTTING: ProjectStatus.CUTTING,
-        ProjectStatus.OVERLAYING: ProjectStatus.OVERLAYING,
-        ProjectStatus.RENDERING: ProjectStatus.RENDERING,
-    }
-    return mapping.get(failed_status, ProjectStatus.DRAFT)
-
-
 def job_type_for_status(status: ProjectStatus) -> JobType | None:
     return STATUS_TO_JOB_TYPE.get(status)
+
+
+def next_status_after_song_selection(source_mode: SourceMode) -> ProjectStatus:
+    if source_mode == SourceMode.MANUAL:
+        return ProjectStatus.AWAITING_CANDIDATES
+    return ProjectStatus.SOURCING
 
 
 def next_auto_status_after_user_gate(status: ProjectStatus) -> ProjectStatus | None:

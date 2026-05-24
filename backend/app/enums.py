@@ -76,7 +76,11 @@ class SourceMode(str, enum.Enum):
 PROJECT_TRANSITIONS: dict[ProjectStatus, set[ProjectStatus]] = {
     ProjectStatus.DRAFT: {ProjectStatus.LOADING_THEMES},
     ProjectStatus.LOADING_THEMES: {ProjectStatus.SONG_SELECTION, ProjectStatus.FAILED},
-    ProjectStatus.SONG_SELECTION: {ProjectStatus.SOURCING, ProjectStatus.FAILED},
+    ProjectStatus.SONG_SELECTION: {
+        ProjectStatus.SOURCING,
+        ProjectStatus.AWAITING_CANDIDATES,
+        ProjectStatus.FAILED,
+    },
     ProjectStatus.SOURCING: {ProjectStatus.AWAITING_CANDIDATES, ProjectStatus.FAILED},
     ProjectStatus.AWAITING_CANDIDATES: {ProjectStatus.DOWNLOADING, ProjectStatus.FAILED},
     ProjectStatus.DOWNLOADING: {ProjectStatus.PROBING_NORMALIZING, ProjectStatus.FAILED},
