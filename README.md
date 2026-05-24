@@ -12,38 +12,47 @@
   <img alt="Stack" src="https://img.shields.io/badge/stack-FastAPI%20%2B%20React-61DAFB?style=flat-square">
 </p>
 
-## About
+## Turn anime picks into finished MVs locally
 
-**Turn anime picks into a finished compilation — on your machine.**
+**Cuekiyo is a local studio for building anime opening and ending compilations.**
 
-Pick shows, choose songs, review clips at three checkpoints, and export a titled MV. Cuekiyo handles sourcing, cutting, overlays, and rendering locally. No cloud, no subscription, no upload step.
+Pick the shows, approve the songs, choose the clips, and export a titled MV without uploading footage, paying for a cloud editor, or stitching everything together by hand.
 
-> **Cue** — song cues, video checkpoints, timeline markers, render gates.  
-> **Kiyo** — clean, quiet clarity.
+No cloud. No subscription. No upload step. Just your machine, your files, and a guided workflow that stops only when your taste matters.
 
----
+## Why Cuekiyo exists
 
-## Why creators use Cuekiyo
+Making anime compilation edits is fun until the workflow turns into a mess:
 
-You already know the grind: hunt openings on YouTube, match timestamps, add lower-thirds, normalize audio, pray ffmpeg does not explode. Cuekiyo replaces that scatter with one guided studio that runs on your machine and only stops where your taste matters.
+- hunting openings across YouTube
+- checking timestamps manually
+- downloading sources one by one
+- trimming clips in separate tools
+- adding lower-thirds
+- normalizing audio
+- re-rendering everything when one clip changes
 
-| | |
-|---|---|
-| **Three checkpoints, not twelve tabs** | Songs → clip sources → render order. Everything else is automatic. |
-| **Your machine, your files** | SQLite + project folders under `data/`. Nothing leaves unless you export. |
-| **Smart sourcing** | YouTube search with scoring and heatmap-based clip starts. |
-| **Polished output** | Lower-thirds, crossfades, per-clip export, re-render without re-downloading. |
-| **Power when you want it** | Paste your own links, bulk MAL import, templates, unlimited song counts. |
+Cuekiyo turns that into a guided local pipeline. You still make the taste decisions (which songs, which clips, what order) while the app handles the repetitive sourcing, cutting, overlay, and render work.
+
+## What it does
+
+| Instead of... | Cuekiyo gives you... |
+| --- | --- |
+| 12 browser tabs and copied timestamps | One guided flow from show picks to final render |
+| Uploading media to random cloud tools | Local files, local database, local exports |
+| Manually hunting every opening | Ranked YouTube candidates you can approve or replace |
+| Rebuilding the same edit repeatedly | Re-render clips without downloading everything again |
+| Losing track of project files | Each project stored under `data/projects/{id}/` |
+| Needing one fixed workflow | Paste your own links, bulk MAL import, or save project templates |
+| Automation guessing wrong on a source | Manual YouTube links per song, always available |
 
 ## See it in action
 
 | Dashboard | Review clips | Finished output |
-|-----------|--------------|-----------------|
+| --- | --- | --- |
 | ![Dashboard](docs/assets/dashboard.png) | ![Review clips gate](docs/assets/project-gate.png) | ![Completed project](docs/assets/completed.png) |
 
-## Get started in two commands
-
-**Requirements:** Python 3.11+, Node.js 24 LTS, `ffmpeg`, `ffprobe`, and `yt-dlp`.
+## Quick start
 
 ```bash
 git clone https://github.com/unloopedmido/cuekiyo.git
@@ -52,45 +61,79 @@ npm run setup
 npm run dev
 ```
 
-Open **http://localhost:5173** — the app walks you through your first compilation.
+Open **http://localhost:5173** and create your first compilation.
 
-Prefer a single local URL after setup? Build once, then run the bundled server:
+Want one URL after setup? Build once, then run the bundled server:
 
 ```bash
 npm start
 ```
 
-Open **http://127.0.0.1:8000** — frontend and API on one port.
+Open **http://127.0.0.1:8000** (frontend and API on the same port).
 
-### System tools
-
-Install `ffmpeg`, `ffprobe`, and `yt-dlp` before your first project:
-
-**Linux (Arch/CachyOS)** — `sudo pacman -S yt-dlp ffmpeg ttf-dejavu`  
-**macOS** — `brew install yt-dlp ffmpeg`  
-**Windows** — `winget install yt-dlp.yt-dlp` and `winget install Gyan.FFmpeg`
-
-Verify everything is ready: http://127.0.0.1:8000/api/system/binaries (all four entries should be available).
-
-## How it works
+## How the flow works
 
 1. **Create a project** — name it, pick anime, choose song types and overlay style.
 2. **Select songs** — review the theme list; Cuekiyo sources YouTube candidates (or you paste links).
 3. **Review clips** — pick one source per song; trim start and duration if needed.
 4. **Render** — confirm order, composite overlays, download the final MP4.
 
-The pipeline auto-advances between stages. It pauses only at song selection, candidate review, optional trim, and render order.
+Everything between those steps runs automatically. The app pauses only at song selection, candidate review, optional trim, and render order.
 
-## Settings at a glance
+## Local-first by design
 
-- **Compilation defaults** (song count, clip length, encoder, etc.) — saved in your browser on the Settings page.
-- **Pipeline tuning** (workers, ffmpeg quality, metadata provider, rate limits) — copy `.env.example` to `.env` and restart the backend.
-- **Anime metadata** — switch Jikan/AniList on Settings; theme lists still come from Jikan.
+Cuekiyo runs on your machine. Projects live in SQLite and on disk under `data/`. Nothing is uploaded to a service you do not control. Your compilations stay yours unless you export them.
 
-## For contributors
+That also means you bring the tools: Python, Node, `ffmpeg`, and `yt-dlp`. See [Requirements](#requirements) below.
+
+## Requirements
+
+- **Python** 3.11+
+- **Node.js** 24 LTS (`>=24.16.0`)
+- **System tools:** `yt-dlp`, `ffmpeg`, `ffprobe`
+- **Font** for overlays (e.g. DejaVu on Linux, Arial on Windows)
+
+**Linux (Arch/CachyOS)** — `sudo pacman -S yt-dlp ffmpeg ttf-dejavu`  
+**macOS** — `brew install yt-dlp ffmpeg`  
+**Windows** — `winget install yt-dlp.yt-dlp` and `winget install Gyan.FFmpeg`
+
+Verify binaries: http://127.0.0.1:8000/api/system/binaries (all four entries should be available after `npm run dev` or `npm start`).
+
+<details>
+<summary>Configuration</summary>
+
+- **Compilation defaults** (song count, clip length, encoder, etc.) are saved in your browser on the **Settings** page.
+- **Pipeline tuning** (workers, ffmpeg quality, metadata provider, rate limits) uses `.env`. Copy `.env.example` to `.env` and restart the backend.
+- **Anime metadata** can be switched between Jikan and AniList on Settings. Theme lists still come from Jikan.
+
+</details>
+
+<details>
+<summary>Where Cuekiyo stores files</summary>
+
+| Path | Purpose |
+| --- | --- |
+| `data/pipeline.db` | SQLite database |
+| `data/settings.json` | Legacy pipeline settings (optional) |
+| `data/projects/{id}/` | Downloads, clips, output |
+
+These paths are gitignored. Delete `data/pipeline.db` for a clean slate.
+
+</details>
+
+<details>
+<summary>Current v1 limitations</summary>
+
+- One pipeline job at a time (global lock)
+- Concat crossfade chain is simplified for 2+ clips
+- Retry infers failed stage from the last failed job
+
+</details>
+
+## Contributing
 
 ```bash
-npm test          # backend pytest + frontend tests + build
+npm test
 npm run lint
 npm run format
 ```
@@ -116,22 +159,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for PR guidelines and [SECURITY.md](SECUR
 - Bulk MAL import + unlimited songs; crossfade 0 s vs 1 s on final MP4
 
 </details>
-
-## Data layout
-
-| Path | Purpose |
-|------|---------|
-| `data/pipeline.db` | SQLite database |
-| `data/settings.json` | Legacy pipeline settings (optional) |
-| `data/projects/{id}/` | Downloads, clips, output |
-
-These paths are gitignored. Delete `data/pipeline.db` for a clean slate.
-
-## Known limitations (v1)
-
-- One pipeline job at a time (global lock)
-- Concat crossfade chain is simplified for 2+ clips
-- Retry infers failed stage from the last failed job
 
 ## Legal notice
 
