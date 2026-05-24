@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="420" viewBox="0 0 1280 420" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="420" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0a0a0a"/>
+      <stop offset="1" stop-color="#111111"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="640" y1="120" x2="640" y2="280" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#b8f028" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#b8f028" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="320" y1="0" x2="960" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6b9e00"/>
+      <stop offset="0.35" stop-color="#b8f028"/>
+      <stop offset="0.65" stop-color="#d4ff4d"/>
+      <stop offset="1" stop-color="#8bc34a"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="420" fill="url(#bg)"/>
+  <ellipse cx="640" cy="180" rx="420" ry="120" fill="url(#glow)"/>
+  <rect x="0" y="408" width="1280" height="2" fill="url(#accent)" opacity="0.85"/>
+  <text x="640" y="148" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="96" font-weight="800" letter-spacing="-2" fill="url(#accent)">CUEKIYO</text>
+  <text x="640" y="208" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="500" fill="#d4d4d4">Local studio for anime opening and ending compilations</text>
+  <text x="640" y="248" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="18" fill="#737373">From song cues to finished MV  on your machine</text>
+  <g font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="600">
+    <rect x="362" y="286" width="88" height="32" rx="16" fill="#171717" stroke="#333" stroke-width="1"/>
+    <text x="406" y="307" text-anchor="middle" fill="#b8f028">local-first</text>
+    <rect x="462" y="286" width="72" height="32" rx="16" fill="#171717" stroke="#333" stroke-width="1"/>
+    <text x="498" y="307" text-anchor="middle" fill="#a3a3a3">ffmpeg</text>
+    <rect x="546" y="286" width="76" height="32" rx="16" fill="#171717" stroke="#333" stroke-width="1"/>
+    <text x="584" y="307" text-anchor="middle" fill="#a3a3a3">yt-dlp</text>
+    <rect x="634" y="286" width="88" height="32" rx="16" fill="#171717" stroke="#333" stroke-width="1"/>
+    <text x="678" y="307" text-anchor="middle" fill="#a3a3a3">FastAPI</text>
+    <rect x="734" y="286" width="72" height="32" rx="16" fill="#171717" stroke="#333" stroke-width="1"/>
+    <text x="770" y="307" text-anchor="middle" fill="#a3a3a3">React</text>
+    <rect x="818" y="286" width="100" height="32" rx="16" fill="#171717" stroke="#333" stroke-width="1"/>
+    <text x="868" y="307" text-anchor="middle" fill="#a3a3a3">SQLite</text>
+  </g>
+</svg>

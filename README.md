@@ -1,10 +1,22 @@
-# Cuekiyo
+<p align="center">
+  <img src="docs/assets/cover.png" alt="Cuekiyo — local anime compilation studio" width="100%" />
+</p>
+
+<p align="center">
+  <a href="https://github.com/unloopedmido/cuekiyo/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/unloopedmido/cuekiyo/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/unloopedmido/cuekiyo?style=flat-square"></a>
+  <a href="https://github.com/unloopedmido/cuekiyo"><img alt="Version" src="https://img.shields.io/badge/version-1.0.0-brightgreen?style=flat-square"></a>
+  <img alt="Local-first" src="https://img.shields.io/badge/local--first-yes-8BC34A?style=flat-square">
+  <img alt="Python" src="https://img.shields.io/badge/python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white">
+  <img alt="Node.js" src="https://img.shields.io/badge/node-24_LTS-339933?style=flat-square&logo=nodedotjs&logoColor=white">
+  <img alt="Stack" src="https://img.shields.io/badge/stack-FastAPI%20%2B%20React-61DAFB?style=flat-square">
+</p>
+
+## About
 
 **Turn anime picks into a finished compilation — on your machine.**
 
 Pick shows, choose songs, review clips at three checkpoints, and export a titled MV. Cuekiyo handles sourcing, cutting, overlays, and rendering locally. No cloud, no subscription, no upload step.
-
-![Cuekiyo demo](docs/assets/demo.gif)
 
 > **Cue** — song cues, video checkpoints, timeline markers, render gates.  
 > **Kiyo** — clean, quiet clarity.

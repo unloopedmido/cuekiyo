@@ -4,7 +4,7 @@ Marketing assets for the public README and GitHub social preview.
 
 | File | Purpose |
 |------|---------|
-| `demo.gif` | README hero — dashboard → review clips → finished output |
+| `cover.png` / `cover.svg` | README hero banner with wordmark and tagline |
 | `dashboard.png` | Projects list with active and completed compilations |
 | `project-gate.png` | Candidate review checkpoint |
 | `completed.png` | Finished project with output actions |
@@ -12,13 +12,13 @@ Marketing assets for the public README and GitHub social preview.
 
 ## Regenerating
 
-Use the dark theme. Capture at 1440×900 (2× retina) for crisp PNGs. Avoid prominent copyrighted artwork in marketing shots when possible.
+Use the dark theme. Capture screenshots at 1440×900 (2× retina) for crisp PNGs. Avoid prominent copyrighted artwork in marketing shots when possible.
 
 ```bash
 npm run dev
 # capture with browser automation or manual screenshots into this folder
 ```
 
-Keep `demo.gif` under ~5 MB for README load times.
+Export `cover.png` from `cover.svg` when editing the banner layout.
 
-The SVG template at [social-preview.svg](social-preview.svg) remains available if you want to tweak the layout before exporting a new PNG.
+The SVG template at [social-preview.svg](social-preview.svg) remains available for the GitHub link preview card.
