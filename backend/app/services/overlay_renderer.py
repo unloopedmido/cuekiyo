@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from app.services.paths import overlay_png_path, resolve_project_path
+from app.schemas.overlay import OverlayConfig
 
 
 @dataclass
@@ -96,15 +97,18 @@ def build_overlay_content(
     song_title: str,
     view_count: int | None,
     uploader_name: str | None,
+    config: OverlayConfig | None = None,
 ) -> OverlayContent:
+    cfg = config or OverlayConfig()
     type_label = "OP" if song_type == "opening" else "ED"
     views = f"{view_count:,} views" if view_count is not None else "Views unknown"
     uploader = uploader_name or "Unknown uploader"
-    return OverlayContent(
-        anime_name=_truncate(anime_name, 56),
-        song_line=_truncate(f"{type_label}{song_number}: {song_title}", 64),
-        meta_line=_truncate(f"{views} · {uploader}", 72),
+    anime = _truncate(anime_name, 56) if cfg.show_anime_name else ""
+    song_line = (
+        _truncate(f"{type_label}{song_number}: {song_title}", 64) if cfg.show_song_line else ""
     )
+    meta = _truncate(f"{views} · {uploader}", 72) if cfg.show_meta_line else ""
+    return OverlayContent(anime_name=anime, song_line=song_line, meta_line=meta)
 
 
 def overlay_script_path() -> Path:
@@ -116,8 +120,10 @@ def render_overlay_png(
     width: int,
     height: int,
     output_path: Path,
+    config: OverlayConfig | None = None,
 ) -> None:
     """Render lower-third PNG via the frontend Satori CLI."""
+    cfg = config or OverlayConfig()
     script = overlay_script_path()
     if not script.is_file():
         raise RuntimeError(f"Overlay renderer script missing: {script}")
@@ -135,6 +141,11 @@ def render_overlay_png(
         "fontBold": resolve_font(),
         "fontRegular": resolve_font_regular(),
         "output": str(output_path),
+        "style": cfg.style,
+        "position": cfg.position,
+        "showAnimeName": cfg.show_anime_name,
+        "showSongLine": cfg.show_song_line,
+        "showMetaLine": cfg.show_meta_line,
     }
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -161,9 +172,16 @@ def render_overlay_png(
         raise RuntimeError(f"Overlay PNG was not written: {output_path}")
 
 
-def write_overlay_png(project_id: str, song_id: str, content: OverlayContent, width: int, height: int) -> Path:
+def write_overlay_png(
+    project_id: str,
+    song_id: str,
+    content: OverlayContent,
+    width: int,
+    height: int,
+    config: OverlayConfig | None = None,
+) -> Path:
     png_path = overlay_png_path(project_id, song_id)
-    render_overlay_png(content, width, height, png_path)
+    render_overlay_png(content, width, height, png_path, config=config)
     return png_path
 
 
@@ -186,9 +204,11 @@ def write_overlay_text_files(project_id: str, song_id: str, content: OverlayCont
     return paths
 
 
-def build_png_overlay_filter() -> str:
-    """Composite RGBA PNG strip along the bottom of the video."""
-    return "[0:v][1:v]overlay=0:H-h:format=auto,format=yuv420p[v]"
+def build_png_overlay_filter(config: OverlayConfig | None = None) -> str:
+    """Composite RGBA PNG strip along the top or bottom of the video."""
+    cfg = config or OverlayConfig()
+    y_expr = "0" if cfg.position == "top" else "H-h"
+    return f"[0:v][1:v]overlay=0:{y_expr}:format=auto,format=yuv420p[v]"
 
 
 def check_overlay_support() -> tuple[bool, str]:
@@ -206,15 +226,18 @@ def check_overlay_support() -> tuple[bool, str]:
 
     satori_pkg = _REPO_ROOT / "frontend" / "node_modules" / "satori"
     resvg_pkg = _REPO_ROOT / "frontend" / "node_modules" / "@resvg" / "resvg-js"
+    cjk_font_pkg = _REPO_ROOT / "frontend" / "node_modules" / "@fontsource" / "noto-sans-jp"
     if not satori_pkg.is_dir() or not resvg_pkg.is_dir():
         return False, "Run npm ci in frontend/ for overlay dependencies"
+    if not cjk_font_pkg.is_dir():
+        return False, "Run npm ci in frontend/ for Noto Sans JP overlay font"
 
     try:
         fonts = f"{resolve_font()}, {resolve_font_regular()}"
     except RuntimeError as exc:
         return False, str(exc)
 
-    return True, f"node + satori overlay ({fonts})"
+    return True, f"node + satori overlay ({fonts}, Noto Sans JP CJK)"
 
 
 def _check_ffmpeg_overlay() -> tuple[bool, str]:

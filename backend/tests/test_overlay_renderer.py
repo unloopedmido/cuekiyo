@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
+from app.schemas.overlay import OverlayConfig
 from app.services import ffmpeg_engine
 from app.services.overlay_renderer import (
     OverlayContent,
@@ -32,6 +33,21 @@ def test_build_png_overlay_filter():
     assert filt.startswith("[0:v][1:v]overlay=")
     assert filt.endswith("[v]")
     assert "format=yuv420p" in filt
+
+
+def test_build_png_overlay_filter_top_position():
+    filt = build_png_overlay_filter(OverlayConfig(position="top"))
+    assert "overlay=0:0" in filt
+
+
+def test_build_overlay_content_respects_visibility_flags():
+    cfg = OverlayConfig(show_anime_name=False, show_meta_line=False)
+    content = build_overlay_content(
+        "Naruto", "opening", 1, "Rocks", 12345, "Uploader", config=cfg
+    )
+    assert content.anime_name == ""
+    assert content.meta_line == ""
+    assert content.song_line.startswith("OP1:")
 
 
 def test_render_overlay_png_invokes_node(tmp_path):
@@ -79,3 +95,4 @@ def test_check_overlay_support():
                                 ok, detail = check_overlay_support()
                                 assert ok is True
                                 assert "satori" in detail
+                                assert "Noto Sans JP" in detail

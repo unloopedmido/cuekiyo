@@ -1,4 +1,6 @@
 import json
+import re
+import shutil
 import threading
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -30,6 +32,7 @@ from app.services.paths import (
     song_download_path,
     song_overlayed_path,
 )
+from app.schemas.overlay import overlay_config_from_json
 from app.state_machine import validate_transition
 
 
@@ -41,6 +44,8 @@ class _SourceCandidatesTask:
     song_type: str
     song_number: int
     artist: str | None
+    song_aliases: list[str]
+    anime_aliases: list[str]
 
 
 @dataclass
@@ -100,6 +105,50 @@ def _as_utc(value: datetime | None) -> datetime | None:
     if value.tzinfo is None:
         return value.replace(tzinfo=timezone.utc)
     return value.astimezone(timezone.utc)
+
+
+def _dedupe_text(values: list[str | None], *, exclude: list[str] | None = None) -> list[str]:
+    excluded = {value.casefold() for value in (exclude or []) if value}
+    seen: set[str] = set()
+    result: list[str] = []
+    for value in values:
+        display = " ".join(str(value or "").split())
+        key = display.casefold()
+        if not display or key in seen or key in excluded:
+            continue
+        seen.add(key)
+        result.append(display)
+    return result
+
+
+def _song_aliases_from_raw_theme_text(raw_text: str, song_title: str) -> list[str]:
+    aliases: list[str | None] = []
+    for quoted in re.findall(r'["“](.+?)["”]', raw_text):
+        aliases.append(quoted)
+        aliases.extend(re.findall(r"\(([^)]{2,})\)", quoted))
+    for parenthetical in re.findall(r"\(([^)]{2,})\)", raw_text):
+        if re.search(r"\b(?:ep|eps|episode|episodes)\b|\d+\s*-\s*\d+", parenthetical, re.IGNORECASE):
+            continue
+        aliases.append(parenthetical)
+    return _dedupe_text(aliases, exclude=[song_title])
+
+
+def _anime_aliases_from_cache(cache: AnimeCache | None, anime_name: str) -> list[str]:
+    if cache is None:
+        return []
+    aliases: list[str | None] = [cache.title, cache.title_english]
+    try:
+        raw = json.loads(cache.raw_json or "{}")
+    except json.JSONDecodeError:
+        raw = {}
+    title = raw.get("title")
+    if isinstance(title, dict):
+        aliases.extend([title.get("romaji"), title.get("english"), title.get("native")])
+    aliases.extend([raw.get("title"), raw.get("title_english"), raw.get("title_japanese")])
+    synonyms = raw.get("title_synonyms")
+    if isinstance(synonyms, list):
+        aliases.extend(str(item) for item in synonyms)
+    return _dedupe_text(aliases, exclude=[anime_name])
 
 
 def _parse_json_list(raw: str) -> list:
@@ -317,11 +366,6 @@ class JobRunner:
                 _emit(job, project, job.progress, message),
                 self._loop,
             )
-
-    def _log_ffmpeg_lines(self, db: Session, job: Job, lines: list[str]) -> None:
-        for line in lines:
-            if line:
-                _log(db, job, line[:4000])
 
     def _persist_parallel_item(
         self,
@@ -602,6 +646,12 @@ class JobRunner:
         progress = ParallelProgress()
         job_id = job.id
         project_id = project.id
+        anime_cache_by_mal_id = {
+            cache.mal_id: cache
+            for cache in db.query(AnimeCache)
+            .filter(AnimeCache.mal_id.in_({song.anime_mal_id for song in songs}))
+            .all()
+        }
         tasks = [
             _SourceCandidatesTask(
                 song_id=song.id,
@@ -610,6 +660,8 @@ class JobRunner:
                 song_type=song.song_type,
                 song_number=song.song_number,
                 artist=song.artist,
+                song_aliases=_song_aliases_from_raw_theme_text(song.raw_theme_text, song.song_title),
+                anime_aliases=_anime_aliases_from_cache(anime_cache_by_mal_id.get(song.anime_mal_id), song.anime_name),
             )
             for song in songs
         ]
@@ -622,6 +674,8 @@ class JobRunner:
                 task.song_number,
                 task.artist,
                 top_n=settings.candidate_count,
+                song_aliases=task.song_aliases,
+                anime_aliases=task.anime_aliases,
             )
 
         def on_complete(task: _SourceCandidatesTask, results) -> None:
@@ -933,6 +987,21 @@ class JobRunner:
         target_width = project.target_width
         target_height = project.target_height
 
+        overlay_config = overlay_config_from_json(project.overlay_config_json)
+        if not overlay_config.enabled:
+            for song in songs:
+                clean = Path(song.clean_clip_path)
+                if not clean.is_file() or not _valid_existing_media(clean):
+                    raise RuntimeError(f"Missing prepared clip for {song.song_title}")
+                out = song_overlayed_path(project_id, song.id)
+                out.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(clean, out)
+                song.overlayed_clip_path = str(out)
+                song.status = SongStatus.READY.value
+            db.commit()
+            _set_project_status(db, project_id, ProjectStatus.AWAITING_RENDER_ORDER)
+            return
+
         for song in songs:
             song_id = song.id
             song_title = song.song_title
@@ -979,7 +1048,7 @@ class JobRunner:
             )
         db.commit()
 
-        overlay_filter = overlay_renderer.build_png_overlay_filter()
+        overlay_filter = overlay_renderer.build_png_overlay_filter(overlay_config)
 
         def work(task: _OverlayTask) -> None:
             content = overlay_renderer.build_overlay_content(
@@ -989,6 +1058,7 @@ class JobRunner:
                 task.song_title,
                 task.candidate_view_count,
                 task.candidate_uploader,
+                config=overlay_config,
             )
             overlay_renderer.write_overlay_text_files(task.project_id, task.song_id, content)
             png_path = overlay_renderer.write_overlay_png(
@@ -997,6 +1067,7 @@ class JobRunner:
                 content,
                 task.width,
                 task.height,
+                config=overlay_config,
             )
             out_path = song_overlayed_path(task.project_id, task.song_id)
             out_path.parent.mkdir(parents=True, exist_ok=True)
