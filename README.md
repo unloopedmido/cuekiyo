@@ -95,9 +95,34 @@ That also means you bring the tools: Python, Node, `ffmpeg`, and `yt-dlp`. See [
 - **System tools:** `yt-dlp`, `ffmpeg`, `ffprobe`
 - **Font** for overlays (e.g. DejaVu on Linux, Arial on Windows)
 
-**Linux (Arch/CachyOS)** — `sudo pacman -S yt-dlp ffmpeg ttf-dejavu`  
+**Linux (Debian / Ubuntu)** — `sudo apt update && sudo apt install yt-dlp ffmpeg fonts-dejavu-core`  
 **macOS** — `brew install yt-dlp ffmpeg`  
 **Windows** — `winget install yt-dlp.yt-dlp` and `winget install Gyan.FFmpeg`
+
+<details>
+<summary>Linux install on other distros</summary>
+
+**Arch / CachyOS**
+
+```bash
+sudo pacman -S yt-dlp ffmpeg ttf-dejavu
+```
+
+**Fedora**
+
+```bash
+sudo dnf install yt-dlp ffmpeg dejavu-sans-fonts
+```
+
+**openSUSE**
+
+```bash
+sudo zypper install yt-dlp ffmpeg dejavu-fonts
+```
+
+If `yt-dlp` is not in your distro packages, install it from [yt-dlp releases](https://github.com/yt-dlp/yt-dlp/releases) or `pip install yt-dlp`.
+
+</details>
 
 Verify binaries: http://127.0.0.1:8000/api/system/binaries (`yt-dlp`, `ffmpeg`, `ffprobe`, and overlay rendering should all report available after `npm run dev` or `npm start`).
 
