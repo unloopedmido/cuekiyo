@@ -3,13 +3,17 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/unloopedmido/cuekiyo/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/unloopedmido/cuekiyo/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/unloopedmido/cuekiyo?style=flat-square"></a>
+  <a href="https://github.com/unloopedmido/cuekiyo/actions/workflows/ci.yml"><img alt="Tests" src="https://img.shields.io/github/actions/workflow/status/unloopedmido/cuekiyo/ci.yml?branch=master&label=tests&style=flat-square"></a>
   <a href="https://github.com/unloopedmido/cuekiyo/releases"><img alt="Release" src="https://img.shields.io/github/v/release/unloopedmido/cuekiyo?style=flat-square&display_name=tag&sort=semver"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/unloopedmido/cuekiyo?style=flat-square"></a>
+  <a href="CONTRIBUTING.md"><img alt="PRs welcome" src="https://img.shields.io/badge/PRs-welcome-8BC34A?style=flat-square"></a>
   <img alt="Local-first" src="https://img.shields.io/badge/local--first-yes-8BC34A?style=flat-square">
+  <br>
   <img alt="Python" src="https://img.shields.io/badge/python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white">
+  <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white">
   <img alt="Node.js" src="https://img.shields.io/badge/node-24_LTS-339933?style=flat-square&logo=nodedotjs&logoColor=white">
-  <img alt="Stack" src="https://img.shields.io/badge/stack-FastAPI%20%2B%20React-61DAFB?style=flat-square">
+  <img alt="React" src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=white">
+  <img alt="FFmpeg" src="https://img.shields.io/badge/FFmpeg-007808?style=flat-square&logo=ffmpeg&logoColor=white">
 </p>
 
 ## Build anime opening/ending compilations without leaving your machine
@@ -27,6 +31,7 @@ No cloud. No subscription. No upload step. Just your machine, your files, and a 
 - [See it in action](#see-it-in-action)
 - [Quick start](#quick-start)
 - [How the flow works](#how-the-flow-works)
+- [Architecture at a glance](#architecture-at-a-glance)
 - [Built with](#built-with)
 - [Local-first by design](#local-first-by-design)
 - [Requirements](#requirements)
@@ -100,6 +105,40 @@ After either command starts, you can confirm your toolchain is healthy at <http:
 4. **Render** — confirm order, composite overlays, download the final MP4.
 
 Everything between those steps runs automatically. The app pauses only at song selection, candidate review, optional trim, and render order.
+
+## Architecture at a glance
+
+A single FastAPI process owns the pipeline. Stages run in background threads under a global lock with a SQLite-backed heartbeat, advance automatically, and stop only at user gates. WebSocket events stream progress to the React 19 SPA.
+
+```mermaid
+flowchart LR
+    A([DRAFT]) --> B[LOAD_THEMES]
+    B --> C{{SONG_SELECTION}}:::gate
+    C --> D[SOURCING]
+    D --> E{{AWAITING_CANDIDATES}}:::gate
+    E --> F[DOWNLOADING]
+    F --> G[PROBING_NORMALIZING]
+    G --> H[CUTTING]
+    H --> I[OVERLAYING]
+    I --> J{{AWAITING_RENDER_ORDER}}:::gate
+    J --> K[RENDERING]
+    K --> L([COMPLETED]):::done
+
+    classDef gate fill:#fde68a,stroke:#a16207,color:#1f2937,font-weight:bold
+    classDef done fill:#bbf7d0,stroke:#166534,color:#1f2937
+```
+
+Hexagons are user gates (the four moments where taste decisions happen). Everything else auto-advances. `FAILED` and `CANCELLED` are reachable from any running or gated state and have no outgoing transitions; transitions are validated centrally in [`backend/app/state_machine.py`](backend/app/state_machine.py).
+
+Notable engineering choices:
+
+- **Global pipeline lock with heartbeat-based stale recovery** — one job at a time, but a backend crash mid-job self-recovers after `PIPELINE_STALE_LOCK_SECONDS`.
+- **NVENC auto-detection with transparent CPU fallback** — probes hardware encoders at startup and silently switches to `libx264` if unavailable.
+- **Heatmap-driven clip start time** — uses YouTube's heatmap data (when present) to find the visually interesting section of an opening, with a deterministic fallback.
+- **Provider fallback for metadata** — Jikan (MyAnimeList) and AniList GraphQL behind one interface, both rate-limited.
+- **Subprocess argument lists, never shell strings** — every `yt-dlp` and `ffmpeg` call is an argv array under `services/paths.py` traversal protection.
+
+Deeper architectural detail lives in [`AGENTS.md`](AGENTS.md).
 
 ## Built with
 
@@ -225,11 +264,15 @@ Tracked publicly via [GitHub issues](https://github.com/unloopedmido/cuekiyo/iss
 - Smarter retry that picks up from the actual failed stage instead of inferring from the last failed job
 - Optional desktop wrapper (Tauri/Electron) for a one-click launch
 
-Known v1 limitations:
+### Known v1 trade-offs
 
-- One pipeline job at a time (global lock)
-- Concat crossfade chain is simplified for 2+ clips
-- Retry infers the failed stage from the last failed job
+These are deliberate scope choices for the 1.0 release, documented honestly so you know what you're getting:
+
+- **One pipeline job at a time.** The job runner uses a global `AppLock` row in SQLite with a heartbeat; this keeps the data model and crash-recovery story simple at the cost of cross-project parallelism. Within a stage, work is already parallelized via a `ThreadPoolExecutor` (`backend/app/jobs/parallel.py`).
+- **Simplified concat for the multi-clip crossfade graph.** The current ffmpeg graph chains `xfade` filters linearly for 2+ clips. It produces correct output but is not the most efficient graph; a richer hierarchical filtergraph is on the roadmap.
+- **Retry infers the failed stage from the last failed job.** Re-running picks up at the inferred boundary rather than at a per-stage durable cursor. In practice this is fine because each stage is idempotent against the on-disk artifacts, but the inference is the next thing to harden.
+
+If any of these affect your use case, [open an issue](https://github.com/unloopedmido/cuekiyo/issues) — they are all addressable, just not before 1.0.
 
 ## Contributing
 
@@ -241,7 +284,7 @@ npm run doctor:react   # React 19 codebase health check
 npm run fallow:health  # dependency / dead-code audit summary
 ```
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) for PR guidelines and [`SECURITY.md`](SECURITY.md) for vulnerability reports.
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for PR guidelines, [`CHANGELOG.md`](CHANGELOG.md) for release history, and [`SECURITY.md`](SECURITY.md) for vulnerability reports.
 
 <details>
 <summary>Manual verification checklist (pre-release smoke test)</summary>
