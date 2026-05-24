@@ -134,6 +134,38 @@ CI runs both on push (see [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
 2. Create project with minimal + top position → confirm overlay appears at top with reduced chrome
 3. Use Preview on setup page → PNG renders without running full pipeline
 
+### Clip trim
+
+1. After selecting sources, confirm **Trim clips** gate appears
+2. Set custom start/duration on one song; leave another on heatmap
+3. Confirm final clip lengths match settings
+
+### Reprocess
+
+1. Complete a project → **Re-apply overlay** with different style → no yt-dlp download logs
+2. **Render again** → new concat only
+
+### Duplicate & export
+
+1. Duplicate completed project → new draft with same anime/settings
+2. Download single overlay clip and ZIP of all clips
+
+### Project templates
+
+1. On project setup, save current settings as a named template
+2. Start a new project from that template → fields match saved values
+3. On Settings, delete a template → it no longer appears in the setup dropdown
+
+### Bulk import & unlimited songs
+
+1. Paste 10 MAL URLs into bulk import → create unlimited project → select all filtered themes
+2. Confirm pipeline continues with all selected songs (no hard cap)
+
+### Crossfade
+
+1. Create project with crossfade **0 s** → cuts are hard between clips
+2. Create project with crossfade **1 s** → audible blend between clips in final MP4
+
 ## Data layout
 
 | Path | Purpose |
