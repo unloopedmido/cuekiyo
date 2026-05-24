@@ -2,8 +2,9 @@ import json
 import shutil
 import tempfile
 from pathlib import Path
+from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, Response
 from sqlalchemy.orm import Session
 
@@ -17,7 +18,7 @@ from app.schemas.job import JobLogOut, JobOut
 from app.schemas.project import ProjectCreate, ProjectUpdate, RenderOrderUpdate
 from app.schemas.settings import AppSettingsOut, AppSettingsUpdate
 from app.services import anime_metadata, ffmpeg_engine, overlay_renderer
-from app.services.paths import project_dir
+from app.services.paths import project_dir, sanitize_filename
 from app.services.youtube_url import fetch_video_metadata, metadata_to_candidate_result
 from app.schemas.overlay import OverlayPreviewRequest
 from app.schemas.reprocess import ReprocessRequest
@@ -716,6 +717,26 @@ def get_output(project_id: str, db: Session = Depends(get_db)):
         "output_filename": filename,
         "exists": bool(output_path and Path(output_path).exists()),
     }
+
+
+@router.get("/projects/{project_id}/songs/{song_id}/clip")
+def download_song_clip(
+    project_id: str,
+    song_id: str,
+    variant: Literal["clean", "overlay"] = Query(default="overlay"),
+    db: Session = Depends(get_db),
+):
+    project = db.get(Project, project_id)
+    song = db.get(Song, song_id)
+    if not project or not song or song.project_id != project_id:
+        raise HTTPException(404, "Song not found")
+    raw_path = song.overlayed_clip_path if variant == "overlay" else song.clean_clip_path
+    if not raw_path or not Path(raw_path).exists():
+        raise HTTPException(404, f"{variant} clip not available")
+    safe_anime = sanitize_filename(song.anime_name, max_len=40)
+    safe_title = sanitize_filename(song.song_title, max_len=40)
+    filename = f"{safe_anime}_{song.song_type}{song.song_number}_{safe_title}_{variant}.mp4"
+    return FileResponse(raw_path, media_type="video/mp4", filename=filename)
 
 
 @router.get("/projects/{project_id}/output/download")
