@@ -1,9 +1,9 @@
 {
-  "name": "video-pipeline",
+  "name": "cuekiyo",
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Local anime MV pipeline — see README.md",
+  "description": "Cuekiyo — local studio for anime opening and ending compilations",
   "engines": {
     "node": ">=24.16.0 <25"
   },
