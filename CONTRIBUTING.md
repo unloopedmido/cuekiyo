@@ -5,7 +5,7 @@ Thanks for your interest in Cuekiyo. This project is local-first tooling for ani
 ## Before you start
 
 1. Read [README.md](README.md) for setup and manual verification paths.
-2. Search [existing issues](https://github.com/unloopedmido/cuekiyo/issues) to avoid duplicates.
+2. Search [existing issues](https://github.com/nonlooped/cuekiyo/issues) to avoid duplicates.
 3. For large changes, open an issue first so we can align on scope.
 
 ## Development setup

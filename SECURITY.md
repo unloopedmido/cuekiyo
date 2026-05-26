@@ -10,7 +10,7 @@
 
 If you discover a security issue, please report it privately rather than opening a public issue.
 
-1. Email or DM the maintainer via [GitHub](https://github.com/unloopedmido) with a clear description and steps to reproduce.
+1. Email or DM the maintainer via [GitHub](https://github.com/nonlooped) with a clear description and steps to reproduce.
 2. Include affected version, platform, and impact if known.
 3. Allow reasonable time to investigate and patch before public disclosure.
 

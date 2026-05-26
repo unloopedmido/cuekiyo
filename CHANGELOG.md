@@ -90,6 +90,6 @@ The first public release of Cuekiyo: a local-first studio for building anime ope
 - Linear `xfade` chain for multi-clip crossfade (correct, not maximally efficient).
 - Retry infers the failed stage from the last failed job rather than reading a per-stage durable cursor.
 
-[Unreleased]: https://github.com/unloopedmido/cuekiyo/compare/v1.0.1...HEAD
-[1.0.1]: https://github.com/unloopedmido/cuekiyo/compare/v1.0.0...v1.0.1
-[1.0.0]: https://github.com/unloopedmido/cuekiyo/releases/tag/v1.0.0
+[Unreleased]: https://github.com/nonlooped/cuekiyo/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/nonlooped/cuekiyo/compare/v1.0.0...v1.0.1
+[1.0.0]: https://github.com/nonlooped/cuekiyo/releases/tag/v1.0.0

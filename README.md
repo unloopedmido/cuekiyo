@@ -3,9 +3,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/unloopedmido/cuekiyo/actions/workflows/ci.yml"><img alt="Tests" src="https://img.shields.io/github/actions/workflow/status/unloopedmido/cuekiyo/ci.yml?branch=master&label=tests&style=flat-square"></a>
-  <a href="https://github.com/unloopedmido/cuekiyo/releases"><img alt="Release" src="https://img.shields.io/github/v/release/unloopedmido/cuekiyo?style=flat-square&display_name=tag&sort=semver"></a>
-  <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/unloopedmido/cuekiyo?style=flat-square"></a>
+  <a href="https://github.com/nonlooped/cuekiyo/actions/workflows/ci.yml"><img alt="Tests" src="https://img.shields.io/github/actions/workflow/status/nonlooped/cuekiyo/ci.yml?branch=master&label=tests&style=flat-square"></a>
+  <a href="https://github.com/nonlooped/cuekiyo/releases"><img alt="Release" src="https://img.shields.io/github/v/release/nonlooped/cuekiyo?style=flat-square&display_name=tag&sort=semver"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/nonlooped/cuekiyo?style=flat-square"></a>
   <a href="CONTRIBUTING.md"><img alt="PRs welcome" src="https://img.shields.io/badge/PRs-welcome-8BC34A?style=flat-square"></a>
   <img alt="Local-first" src="https://img.shields.io/badge/local--first-yes-8BC34A?style=flat-square">
   <br>
@@ -80,7 +80,7 @@ Cuekiyo turns that into a guided local pipeline. You still make the taste decisi
 Requires **Python 3.11+**, **Node.js 24 LTS**, `ffmpeg`, `ffprobe`, and `yt-dlp` on your `PATH`. See [Requirements](#requirements) for per-OS install commands.
 
 ```bash
-git clone https://github.com/unloopedmido/cuekiyo.git
+git clone https://github.com/nonlooped/cuekiyo.git
 cd cuekiyo
 npm run setup   # first run can take a few minutes (Python venv + npm install)
 npm run dev
@@ -257,7 +257,7 @@ Overlay rendering uses Node.js (Satori) under the hood. Confirm `npm run setup` 
 
 ## Roadmap
 
-Tracked publicly via [GitHub issues](https://github.com/unloopedmido/cuekiyo/issues). Current direction:
+Tracked publicly via [GitHub issues](https://github.com/nonlooped/cuekiyo/issues). Current direction:
 
 - Parallel project jobs (lift the global pipeline lock)
 - Richer concat / crossfade graph for 2+ clips
@@ -272,7 +272,7 @@ These are deliberate scope choices for the 1.0 release, documented honestly so y
 - **Simplified concat for the multi-clip crossfade graph.** The current ffmpeg graph chains `xfade` filters linearly for 2+ clips. It produces correct output but is not the most efficient graph; a richer hierarchical filtergraph is on the roadmap.
 - **Retry infers the failed stage from the last failed job.** Re-running picks up at the inferred boundary rather than at a per-stage durable cursor. In practice this is fine because each stage is idempotent against the on-disk artifacts, but the inference is the next thing to harden.
 
-If any of these affect your use case, [open an issue](https://github.com/unloopedmido/cuekiyo/issues) — they are all addressable, just not before 1.0.
+If any of these affect your use case, [open an issue](https://github.com/nonlooped/cuekiyo/issues) — they are all addressable, just not before 1.0.
 
 ## Contributing
 

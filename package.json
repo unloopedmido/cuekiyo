@@ -6,12 +6,12 @@
   "description": "Cuekiyo — local studio for anime opening and ending compilations",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/unloopedmido/cuekiyo.git"
+    "url": "git+https://github.com/nonlooped/cuekiyo.git"
   },
   "bugs": {
-    "url": "https://github.com/unloopedmido/cuekiyo/issues"
+    "url": "https://github.com/nonlooped/cuekiyo/issues"
   },
-  "homepage": "https://github.com/unloopedmido/cuekiyo#readme",
+  "homepage": "https://github.com/nonlooped/cuekiyo#readme",
   "engines": {
     "node": ">=24.16.0 <25"
   },
